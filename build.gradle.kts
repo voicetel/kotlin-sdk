@@ -28,6 +28,7 @@ dependencies {
     api("io.ktor:ktor-client-content-negotiation:$ktorVersion")
     api("io.ktor:ktor-serialization-kotlinx-json:$ktorVersion")
     implementation("io.ktor:ktor-client-cio:$ktorVersion")
+    implementation("io.ktor:ktor-client-encoding:$ktorVersion")
 
     testImplementation("org.jetbrains.kotlin:kotlin-test")
     testImplementation("org.junit.jupiter:junit-jupiter:$junitVersion")

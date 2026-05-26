@@ -3,6 +3,7 @@ package com.voicetel.sdk
 import io.ktor.client.HttpClient
 import io.ktor.client.engine.cio.CIO
 import io.ktor.client.plugins.HttpTimeout
+import io.ktor.client.plugins.compression.ContentEncoding
 import io.ktor.client.plugins.contentnegotiation.ContentNegotiation
 import io.ktor.client.request.header
 import io.ktor.client.request.request
@@ -70,6 +71,9 @@ public class Transport internal constructor(opts: ClientOptions) {
     private fun configure(builder: io.ktor.client.HttpClientConfig<*>) {
         builder.install(ContentNegotiation) {
             json(json)
+        }
+        builder.install(ContentEncoding) {
+            gzip()
         }
         builder.install(HttpTimeout) {
             requestTimeoutMillis = timeoutMillis
@@ -145,6 +149,9 @@ public class Transport internal constructor(opts: ClientOptions) {
             json.encodeToString(bodySerializer as SerializationStrategy<Any?>, bodyValue)
         } else null
 
+        val idempotencyKey = if (method in setOf(HttpMethod.Post, HttpMethod.Put, HttpMethod.Patch))
+            java.util.UUID.randomUUID().toString() else null
+
         var lastError: Throwable? = null
         var attempt = 0
         while (attempt <= maxRetries) {
@@ -158,6 +165,7 @@ public class Transport internal constructor(opts: ClientOptions) {
                     header(HttpHeaders.UserAgent, userAgent)
                     header(HttpHeaders.Accept, ContentType.Application.Json.toString())
                     if (requireAuth) header(HttpHeaders.Authorization, "Bearer $apiKey")
+                    if (idempotencyKey != null) header("Idempotency-Key", idempotencyKey)
                     if (serializedBody != null) {
                         contentType(ContentType.Application.Json)
                         setBody(serializedBody)
