@@ -16,7 +16,7 @@ repositories {
     mavenCentral()
 }
 
-val ktorVersion = "2.3.13"
+val ktorVersion = "3.5.0"
 val kxsVersion = "1.11.0"
 val coroutinesVersion = "1.9.0"
 val junitVersion = "5.11.3"
