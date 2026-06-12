@@ -18,7 +18,7 @@ repositories {
 
 val ktorVersion = "2.3.13"
 val kxsVersion = "1.11.0"
-val coroutinesVersion = "1.9.0"
+val coroutinesVersion = "1.11.0"
 val junitVersion = "5.11.3"
 
 dependencies {
