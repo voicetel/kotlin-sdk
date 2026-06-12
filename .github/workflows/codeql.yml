@@ -38,7 +38,7 @@ jobs:
           languages: ${{ matrix.language }}
 
       - name: Build
-        run: ./gradlew --no-daemon assemble -x test
+        run: ./gradlew --no-daemon clean compileKotlin -x test
 
       - name: Analyze
         uses: github/codeql-action/analyze@v4
