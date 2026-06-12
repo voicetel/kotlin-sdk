@@ -3,7 +3,6 @@ package com.voicetel.sdk
 import io.ktor.client.HttpClient
 import io.ktor.client.engine.mock.MockEngine
 import io.ktor.client.engine.mock.MockRequestHandler
-import io.ktor.client.plugins.HttpTimeout
 import io.ktor.client.plugins.contentnegotiation.ContentNegotiation
 import io.ktor.http.HttpHeaders
 import io.ktor.http.headersOf
@@ -18,11 +17,6 @@ internal fun mockClient(
     val engine = MockEngine { req -> handler(req) }
     val httpClient = HttpClient(engine) {
         install(ContentNegotiation) { json(Json { ignoreUnknownKeys = true }) }
-        install(HttpTimeout) {
-            requestTimeoutMillis = 5_000
-            connectTimeoutMillis = 5_000
-            socketTimeoutMillis = 5_000
-        }
         expectSuccess = false
     }
     return VoiceTelClient(
@@ -44,11 +38,6 @@ internal fun mockClientRetries(
     val engine = MockEngine { req -> handler(req) }
     val httpClient = HttpClient(engine) {
         install(ContentNegotiation) { json(Json { ignoreUnknownKeys = true }) }
-        install(HttpTimeout) {
-            requestTimeoutMillis = 5_000
-            connectTimeoutMillis = 5_000
-            socketTimeoutMillis = 5_000
-        }
         expectSuccess = false
     }
     return VoiceTelClient(
