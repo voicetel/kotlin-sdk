@@ -19,7 +19,7 @@ repositories {
 val ktorVersion = "3.5.2"
 val kxsVersion = "1.11.0"
 val coroutinesVersion = "1.11.0"
-val junitVersion = "6.1.2"
+val junitVersion = "6.1.3"
 
 dependencies {
     api("org.jetbrains.kotlinx:kotlinx-coroutines-core:$coroutinesVersion")
