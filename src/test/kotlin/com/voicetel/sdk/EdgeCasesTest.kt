@@ -1,6 +1,8 @@
 package com.voicetel.sdk
 
+import com.voicetel.sdk.models.Account
 import com.voicetel.sdk.models.INumbering
+import com.voicetel.sdk.models.Numbers
 import com.voicetel.sdk.resources.INumberingService
 import com.voicetel.sdk.resources.MessagingService
 import io.ktor.client.engine.mock.respond
@@ -9,6 +11,7 @@ import io.ktor.http.HttpStatusCode
 import io.ktor.http.headersOf
 import kotlinx.coroutines.test.runTest
 import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.JsonPrimitive
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertNotNull
@@ -203,10 +206,10 @@ class EdgeCasesTest {
     // -- Coverage: Version object instantiation defaults --
     @Test
     fun versionObjectAccessors() {
-        assertEquals("2.2.10", Version.SDK_VERSION)
-        assertEquals("v2.2.10", Version.API_VERSION)
+        assertEquals("2.2.14", Version.SDK_VERSION)
+        assertEquals("v2.2.14", Version.API_VERSION)
         assertTrue(Version.DEFAULT_USER_AGENT.contains("kotlin"))
-        assertTrue(Version.DEFAULT_USER_AGENT.contains("2.2.10"))
+        assertTrue(Version.DEFAULT_USER_AGENT.contains("2.2.14"))
     }
 
     // -- Coverage: ClientOptions defaults companion --
@@ -224,5 +227,41 @@ class EdgeCasesTest {
         assertEquals(1, com.voicetel.sdk.models.Authentication.TYPE_IP_AUTH)
         assertEquals(2, com.voicetel.sdk.models.Authentication.TYPE_DIGEST_OR_IP)
         assertEquals(3, com.voicetel.sdk.models.Authentication.TYPE_DIGEST_AND_IP)
+    }
+
+    // -- Coverage: fields removed in API 2.2.11 stay off the wire models --
+    @Test
+    fun removedFieldsNotSerialized() {
+        val json = Json
+        val services = json.encodeToString(
+            Account.Services.serializer(), Account.Services(sms = true))
+        assertTrue("\"rcid\"" !in services)
+        val port = json.encodeToString(
+            INumbering.PortSummary.serializer(), INumbering.PortSummary(status = "Complete"))
+        assertTrue("\"supportUrl\"" !in port)
+    }
+
+    // -- Coverage: campaign-assign orderId accepts string or number --
+    @Test
+    fun campaignAssignOrderIdDecodesBothTypes() {
+        val json = Json
+        val str = json.decodeFromString(Numbers.MessagingCampaignAssignData.serializer(),
+            """{"orderId":"ORD-1"}""")
+        assertEquals(JsonPrimitive("ORD-1"), str.orderId)
+        val num = json.decodeFromString(Numbers.MessagingCampaignAssignData.serializer(),
+            """{"orderId":12345}""")
+        assertEquals(JsonPrimitive(12345), num.orderId)
+    }
+
+    // -- Coverage: messaging state decodes network C plus a pending job --
+    @Test
+    fun messagingStateDecodesPendingJob() {
+        val state = Json.decodeFromString(Numbers.MessagingState.serializer(),
+            """{"network":"C","pending":{"campaignId":"CAMP002","state":"routing",""" +
+                """"message":"assigning routes","createdAt":"2026-01-01T00:00:00Z",""" +
+                """"updatedAt":"2026-01-01T00:01:00Z"}}""")
+        assertEquals("C", state.network)
+        assertEquals("CAMP002", state.pending?.campaignId)
+        assertEquals("routing", state.pending?.state)
     }
 }

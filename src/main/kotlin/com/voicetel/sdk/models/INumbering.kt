@@ -158,7 +158,6 @@ public object INumbering {
         public val foc: String? = null,
         public val createdAt: String? = null,
         public val message: String? = null,
-        public val supportUrl: String? = null,
     )
 
     @Serializable
@@ -189,6 +188,7 @@ public object INumbering {
     @Serializable
     public data class OrderCreateData(
         public val orderId: String? = null,
+        /** Amount deducted from the account balance. */
         public val amountCharged: Double? = null,
         public val numbersOrdered: List<String> = emptyList(),
         public val failed: List<OrderFailedEntry> = emptyList(),

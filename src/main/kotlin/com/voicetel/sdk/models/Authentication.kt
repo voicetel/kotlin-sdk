@@ -4,7 +4,7 @@ import kotlinx.serialization.Serializable
 
 /** Authentication-resource models. */
 public object Authentication {
-    /** 0=Digest, 1=IP Auth, 2=Digest OR IP, 3=Digest AND IP. */
+    /** 0=Digest, 1=Lax (Digest | IP), 2=IP, 3=Strict (Digest + IP). */
     public const val TYPE_DIGEST: Int = 0
     public const val TYPE_IP_AUTH: Int = 1
     public const val TYPE_DIGEST_OR_IP: Int = 2

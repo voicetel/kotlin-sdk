@@ -268,7 +268,8 @@ class ResourcesTest {
                     respond(envelope("""{"orderId":"o1","amountCharged":1.0,"numbersOrdered":["2015550123"],"failed":[]}"""),
                         HttpStatusCode.OK, jsonHeaders)
                 req.url.encodedPath == "/v2.2/ports" && req.method == HttpMethod.Get ->
-                    respond(envelope("""{"ports":[]}"""), HttpStatusCode.OK, jsonHeaders)
+                    respond(envelope("""{"ports":[{"status":"Complete","id":"9","pid":"P1","foc":"20260101"}]}"""),
+                        HttpStatusCode.OK, jsonHeaders)
                 req.url.encodedPath == "/v2.2/ports" && req.method == HttpMethod.Post ->
                     respond(envelope("""{"pid":"P1","ticket":7,"message":"queued"}"""), HttpStatusCode.OK, jsonHeaders)
                 req.url.encodedPath == "/v2.2/ports/9" ->
@@ -285,7 +286,9 @@ class ResourcesTest {
         val ord = client.iNumbering.order(INumbering.OrderCreateRequest(
             listOf(INumbering.OrderNumber.of("2015550123"))))
         assertEquals("o1", ord.orderId)
-        client.iNumbering.ports()
+        val ports = client.iNumbering.ports()
+        assertEquals("Complete", ports.ports.single().status)
+        assertEquals("P1", ports.ports.single().pid)
         client.iNumbering.port(9)
         val ps = client.iNumbering.submitPort(
             INumbering.PortSubmitRequest(did = listOf("2015550123"), name = "X"))
@@ -343,7 +346,11 @@ class ResourcesTest {
                 path == "/v2.2/messaging/brands" ->
                     respond(envelope("""{"result":{"statusCode":"OK","status":"pending"}}"""), HttpStatusCode.OK, jsonHeaders)
                 path == "/v2.2/messaging/campaigns" && req.method == HttpMethod.Get ->
-                    respond(envelope("""{"campaigns":[]}"""), HttpStatusCode.OK, jsonHeaders)
+                    respond(envelope("""{"campaigns":[{"id":"C1","status":"CAMPAIGN_DCA_COMPLETE",""" +
+                        """"numbers":["2015550123"],"dca":{"electionComplete":true,""" +
+                        """"electedCarriers":["AT&T","T-Mobile"],"carriers":[{"carrier":"T-Mobile",""" +
+                        """"status":"ACTIVE","detail":"Campaign approved","updatedAt":"2026-01-02T03:04:05Z"}]}}]}"""),
+                        HttpStatusCode.OK, jsonHeaders)
                 path == "/v2.2/messaging/campaigns" && req.method == HttpMethod.Post ->
                     respond(envelope("""{"result":{"statusCode":"OK","status":"pending"}}"""), HttpStatusCode.OK, jsonHeaders)
                 path == "/v2.2/numbers/messaging" -> {
@@ -356,7 +363,13 @@ class ResourcesTest {
         client.messaging.history(MessagingService.HistoryOptions.forNumber("2015550123"))
         client.messaging.send(Messaging.SendRequest("f", "t", "hi"))
         client.messaging.createBrand(Messaging.BrandCreateRequest("b", "B"))
-        client.messaging.campaignStatus()
+        val cs = client.messaging.campaignStatus()
+        val item = cs.campaigns.single()
+        assertEquals("CAMPAIGN_DCA_COMPLETE", item.status)
+        assertEquals(true, item.dca?.electionComplete)
+        assertEquals(listOf("AT&T", "T-Mobile"), item.dca?.electedCarriers)
+        assertEquals("T-Mobile", item.dca?.carriers?.single()?.carrier)
+        assertEquals("Campaign approved", item.dca?.carriers?.single()?.detail)
         client.messaging.createCampaign(Messaging.CampaignCreateRequest("b", "x", "desc"))
         client.messaging.numbersState(listOf("2015550123", "2015551235"))
         client.close()
@@ -416,17 +429,28 @@ class ResourcesTest {
                 p == "/v2.2/numbers/2015550123/sms" && m == HttpMethod.Delete ->
                     respond("", HttpStatusCode.NoContent)
                 p == "/v2.2/numbers/2015550123/messaging" && m == HttpMethod.Get ->
-                    respond(envelope("""{"number":"2015550123","onAccount":true,"enabled":true}"""), HttpStatusCode.OK, jsonHeaders)
+                    respond(envelope("""{"number":"2015550123","onAccount":true,"enabled":true,""" +
+                        """"network":"C","pending":{"campaignId":"C1","state":"routing",""" +
+                        """"message":"assigning routes","createdAt":"2026-01-01T00:00:00Z",""" +
+                        """"updatedAt":"2026-01-01T00:01:00Z"}}"""), HttpStatusCode.OK, jsonHeaders)
                 p == "/v2.2/numbers/2015550123/messaging" && m == HttpMethod.Patch ->
                     respond(envelope("""{"number":"2015550123","updated":["routeIn"]}"""), HttpStatusCode.OK, jsonHeaders)
                 p == "/v2.2/numbers/2015550123/messaging-campaign" && m == HttpMethod.Put ->
-                    respond(envelope("""{"number":"2015550123","campaignId":"C1"}"""), HttpStatusCode.OK, jsonHeaders)
+                    respond(envelope("""{"number":"2015550123","campaignId":"C1","status":"pending",""" +
+                        """"carrier":1,"network":"C","upstreamCnpId":"BANDW","previousNetwork":null,""" +
+                        """"previousNetworkCleared":false,"alreadyAssigned":false,"orderId":null,""" +
+                        """"warning":"stale path-A registration found; removal requested",""" +
+                        """"message":"provisioning started",""" +
+                        """"job":{"campaignId":"C1","state":"queued","message":"queued",""" +
+                        """"createdAt":"2026-01-01T00:00:00Z","updatedAt":"2026-01-01T00:00:00Z"}}"""),
+                        HttpStatusCode.OK, jsonHeaders)
                 p == "/v2.2/numbers/2015550123/messaging-campaign" && m == HttpMethod.Delete ->
                     respond(envelope("""{"number":"2015550123","campaignId":"C1","unassigned":true}"""), HttpStatusCode.OK, jsonHeaders)
                 p == "/v2.2/numbers/messaging-campaign" && m == HttpMethod.Delete ->
                     respond(envelope("""{"campaignId":"C1","unassignedNumbers":["2015550123"],"failed":[]}"""), HttpStatusCode.OK, jsonHeaders)
                 p == "/v2.2/numbers/2015550123/port-out-pin" ->
-                    respond(envelope("""{"number":"2015550123","portOutPin":"1234"}"""), HttpStatusCode.OK, jsonHeaders)
+                    respond(envelope("""{"number":"2015550123","portOutPin":"1234","changed":true}"""),
+                        HttpStatusCode.OK, jsonHeaders)
                 else -> error("unexpected ${req.method} $p")
             }
         }
@@ -448,12 +472,24 @@ class ResourcesTest {
         client.numbers.getSms("2015550123")
         client.numbers.setSms("2015550123", Numbers.SmsRequest("webhook", "r"))
         client.numbers.removeSms("2015550123")
-        client.numbers.getMessaging("2015550123")
+        val msg = client.numbers.getMessaging("2015550123")
+        assertEquals("C", msg.network)
+        assertEquals("routing", msg.pending?.state)
+        assertEquals("assigning routes", msg.pending?.message)
         client.numbers.patchMessaging("2015550123", Numbers.MessagingPatchRequest(routeIn = 1))
-        client.numbers.assignCampaign("2015550123", Numbers.CampaignAssignRequest("C1"))
+        val assign = client.numbers.assignCampaign("2015550123", Numbers.CampaignAssignRequest("C1"))
+        assertEquals("pending", assign.status)
+        assertEquals(false, assign.alreadyAssigned)
+        assertNull(assign.orderId)
+        assertEquals("BANDW", assign.upstreamCnpId)
+        assertEquals("stale path-A registration found; removal requested", assign.warning)
+        assertEquals("provisioning started", assign.message)
+        assertEquals("queued", assign.job?.state)
         client.numbers.unassignCampaign("2015550123")
         client.numbers.bulkUnassignCampaign(listOf("2015550123"))
-        client.numbers.setPortOutPin("2015550123", Numbers.PortOutPinUpdateRequest("1234"))
+        val pin = client.numbers.setPortOutPin("2015550123", Numbers.PortOutPinUpdateRequest("1234"))
+        assertEquals("1234", pin.portOutPin)
+        assertEquals(true, pin.changed)
         client.close()
     }
 

@@ -185,8 +185,8 @@ class TransportTest {
 
     @Test
     fun versionConstantsPresent() {
-        assertEquals("2.2.10", Version.SDK_VERSION)
-        assertEquals("v2.2.10", Version.API_VERSION)
+        assertEquals("2.2.14", Version.SDK_VERSION)
+        assertEquals("v2.2.14", Version.API_VERSION)
         assertTrue(Version.DEFAULT_BASE_URL.startsWith("https://"))
     }
 

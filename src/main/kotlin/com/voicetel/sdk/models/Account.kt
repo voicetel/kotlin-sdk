@@ -25,7 +25,6 @@ public object Account {
         public val cnam: Boolean? = null,
         public val bypassMedia: Boolean? = null,
         public val intl: Boolean? = null,
-        public val rcid: Boolean? = null,
         public val mms: Boolean? = null,
         public val dialer: Boolean? = null,
         public val sms: Boolean? = null,

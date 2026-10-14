@@ -26,6 +26,11 @@ public object Messaging {
         public val messagingBrandDescription: String? = null,
     )
 
+    /**
+     * Body for POST /v2.2/messaging/campaigns, passed through to the campaign
+     * registration service. [campaignClassName] (from the campaign registry)
+     * and [campaignStartDate] (today) are auto-populated if omitted.
+     */
     @Serializable
     public data class CampaignCreateRequest(
         public val messagingBrandId: String,
@@ -84,11 +89,35 @@ public object Messaging {
     @Serializable
     public data class CampaignCreateData(public val result: RegistrationResult? = null)
 
+    /** One carrier's latest DCA decision, as received. */
+    @Serializable
+    public data class CampaignDcaCarrier(
+        public val carrier: String? = null,
+        /** ACTIVE, REJECTED, SUSPENDED, UNSUSPENDED or TERMINATED. */
+        public val status: String? = null,
+        /** The reviewer's note, as given. */
+        public val detail: String? = null,
+        public val updatedAt: String? = null,
+    )
+
+    /** Carrier (DCA) review progress for a campaign; null for CAMPAIGN_INVALID_ID. */
+    @Serializable
+    public data class CampaignDca(
+        /** True once every carrier has a DCA assigned to review the campaign. */
+        public val electionComplete: Boolean? = null,
+        /** Carriers with a DCA assigned so far (null when unavailable). */
+        public val electedCarriers: List<String>? = null,
+        public val carriers: List<CampaignDcaCarrier> = emptyList(),
+    )
+
     @Serializable
     public data class CampaignStatusItem(
         public val id: String? = null,
+        /** e.g. CAMPAIGN_DCA_COMPLETE, CAMPAIGN_DCA_COMPLETE_NO_NUMBERS_ASSIGNED, CAMPAIGN_PENDING_DCA, CAMPAIGN_DCA_REJECTED, CAMPAIGN_INVALID_ID. */
         public val status: String? = null,
         public val numbers: List<String> = emptyList(),
+        /** Carrier (DCA) review progress; null for CAMPAIGN_INVALID_ID. */
+        public val dca: CampaignDca? = null,
     )
 
     @Serializable
