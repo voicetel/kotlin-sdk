@@ -16,6 +16,8 @@ import io.ktor.client.engine.mock.respond
 import io.ktor.http.HttpMethod
 import io.ktor.http.HttpStatusCode
 import kotlinx.coroutines.test.runTest
+import kotlinx.serialization.json.boolean
+import kotlinx.serialization.json.jsonPrimitive
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertNotNull
@@ -382,6 +384,37 @@ class ResourcesTest {
             respond(envelope("""{"messages":[]}"""), HttpStatusCode.OK, jsonHeaders)
         }
         client.messaging.history()
+        client.close()
+    }
+
+    @Test
+    fun messagingHealth() = runTest {
+        // v2.2.15: messaging-health endpoints have no response schema in the spec, so the
+        // SDK returns the decoded JSON object as a raw JsonObject.
+        val client = mockClient { req ->
+            val path = req.url.encodedPath
+            val m = req.method
+            when {
+                path == "/v2.2/messaging/health" && m == HttpMethod.Get ->
+                    respond(envelope("""{"summary":{"numbers":3,"healthy":2}}"""), HttpStatusCode.OK, jsonHeaders)
+                path == "/v2.2/messaging/health/alerts" && m == HttpMethod.Get ->
+                    respond(envelope("""{"enabled":true}"""), HttpStatusCode.OK, jsonHeaders)
+                path == "/v2.2/messaging/health/alerts" && m == HttpMethod.Put ->
+                    respond(envelope("""{"enabled":false}"""), HttpStatusCode.OK, jsonHeaders)
+                path == "/v2.2/messaging/health/check" && m == HttpMethod.Post ->
+                    respond(envelope("""{"number":"2125550123","inService":true}"""), HttpStatusCode.OK, jsonHeaders)
+                path == "/v2.2/messaging/health/samples" && m == HttpMethod.Get -> {
+                    assertEquals("2125550123", req.url.parameters["number"])
+                    respond(envelope("""{"samples":[]}"""), HttpStatusCode.OK, jsonHeaders)
+                }
+                else -> error("unexpected $path $m")
+            }
+        }
+        assertNotNull(client.messaging.health()["summary"])
+        assertEquals(true, client.messaging.healthAlerts()["enabled"]?.jsonPrimitive?.boolean)
+        assertEquals(false, client.messaging.setHealthAlerts(false)["enabled"]?.jsonPrimitive?.boolean)
+        assertEquals(true, client.messaging.healthCheck("2125550123")["inService"]?.jsonPrimitive?.boolean)
+        assertNotNull(client.messaging.healthSamples("2125550123")["samples"])
         client.close()
     }
 

@@ -206,10 +206,10 @@ class EdgeCasesTest {
     // -- Coverage: Version object instantiation defaults --
     @Test
     fun versionObjectAccessors() {
-        assertEquals("2.2.14", Version.SDK_VERSION)
-        assertEquals("v2.2.14", Version.API_VERSION)
+        assertEquals("2.2.15", Version.SDK_VERSION)
+        assertEquals("v2.2.15", Version.API_VERSION)
         assertTrue(Version.DEFAULT_USER_AGENT.contains("kotlin"))
-        assertTrue(Version.DEFAULT_USER_AGENT.contains("2.2.14"))
+        assertTrue(Version.DEFAULT_USER_AGENT.contains("2.2.15"))
     }
 
     // -- Coverage: ClientOptions defaults companion --

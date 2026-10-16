@@ -2,7 +2,7 @@
 
 The official Kotlin client for the [VoiceTel REST API](https://voicetel.com/docs/api/v2.2/) — provision numbers, place orders, validate e911, send messages, and manage your account, with `suspend` functions, coroutine-safe retries, and `kotlinx.serialization` end-to-end.
 
-![Version](https://img.shields.io/badge/version-2.2.14-blue)
+![Version](https://img.shields.io/badge/version-2.2.15-blue)
 ![Kotlin](https://img.shields.io/badge/kotlin-2.0%2B-purple)
 ![JVM](https://img.shields.io/badge/jvm-17%2B-blue)
 ![License](https://img.shields.io/badge/license-MIT-green)
@@ -48,7 +48,7 @@ The official Kotlin client for the [VoiceTel REST API](https://voicetel.com/docs
 - **Account** — profile, sub-accounts, CDRs, credits, payments, MRC, registration, password recovery.
 - **e911** — record provisioning, address validation, lookup, removal.
 - **Gateways** — list, create, update, delete, view bound numbers.
-- **Messaging** — SMS & MMS sending, message history, 10DLC brand and campaign registration, per-number messaging state.
+- **Messaging** — SMS & MMS sending, message history, 10DLC brand and campaign registration, per-number messaging state, and messaging health (account overview, per-number live check, spam-blocked samples, alert-email setting).
 - **Lookups** — CNAM and LRN dips.
 - **iNumbering** — inventory search, coverage queries, number orders, port-in submissions, port-out availability checks.
 - **Support** — ticket create / read / update / delete, threaded messages, replies.
@@ -66,7 +66,7 @@ The official Kotlin client for the [VoiceTel REST API](https://voicetel.com/docs
 
 ```kotlin
 dependencies {
-    implementation("com.voicetel:voicetel-sdk-kotlin:2.2.14")
+    implementation("com.voicetel:voicetel-sdk-kotlin:2.2.15")
 }
 ```
 
@@ -76,7 +76,7 @@ dependencies {
 <dependency>
   <groupId>com.voicetel</groupId>
   <artifactId>voicetel-sdk-kotlin</artifactId>
-  <version>2.2.14</version>
+  <version>2.2.15</version>
 </dependency>
 ```
 
@@ -205,7 +205,7 @@ job.cancel()  // any pending HTTP request and retry-backoff is cancelled.
 
 These endpoints are limited to **6 requests per hour per IP**:
 
-- `account/info` (`client.account.get()`)
+- `account` (`client.account.get()`)
 - `account/cdr` (`client.account.cdr(...)`)
 - `account/recurring-charges` (`client.account.recurringCharges()`)
 - `account/payments` (`client.account.payments()`)
