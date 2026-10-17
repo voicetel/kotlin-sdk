@@ -173,7 +173,11 @@ public object Support {
     public data class TicketData(public val ticket: Conversation)
 
     @Serializable
-    public data class ListData(public val tickets: List<Conversation> = emptyList())
+    public data class ListData(
+        /** Total tickets matching the filter. */
+        public val totalCount: Int? = null,
+        public val tickets: List<Conversation> = emptyList(),
+    )
 
     @Serializable
     public data class ThreadsData(public val messages: List<Thread> = emptyList())

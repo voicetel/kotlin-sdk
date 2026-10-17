@@ -21,18 +21,18 @@ import kotlin.test.assertFailsWith
 
 class EdgeCasesTest {
 
-    // -- Coverage: error response with a structured `code` field --
+    // -- Coverage: spec error envelope carries nested numeric code + message --
     @Test
     fun errorBodyExtractsCode() = runTest {
         val client = mockClient { _ ->
             respond(
-                """{"code":"E_BAD","message":"validation failed"}""",
+                """{"status":"error","error":{"code":400,"message":"Field Required: number"}}""",
                 HttpStatusCode.BadRequest, jsonHeaders,
             )
         }
         val err = assertFailsWith<ApiError> { client.account.get() }
-        assertEquals("E_BAD", err.code)
-        assertEquals("validation failed", err.message)
+        assertEquals(400L, err.code)
+        assertEquals("Field Required: number", err.message)
         client.close()
     }
 
@@ -75,73 +75,73 @@ class EdgeCasesTest {
         client.close()
     }
 
-    // -- Coverage: INumbering search query passes all params --
+    // -- Coverage: INumbering search query passes all spec params --
     @Test
     fun inventoryFullQuery() = runTest {
         val client = mockClient { req ->
             val q = req.url.parameters
-            assertEquals("201", q["npa"])
-            assertEquals("555", q["nxx"])
-            assertEquals("NJ", q["state"])
-            assertEquals("Newark", q["ratecenter"])
-            assertEquals("9999", q["contains"])
-            assertEquals("1234", q["endswith"])
-            assertEquals("10", q["limit"])
+            assertEquals("201555*", q["tnMask"])
+            assertEquals("25", q["quantity"])
+            assertEquals("NJ", q["province"])
+            assertEquals("Newark", q["rateCenter"])
+            assertEquals("220", q["lata"])
+            assertNull(q["npa"])
+            assertNull(q["nxx"])
+            assertNull(q["state"])
+            assertNull(q["contains"])
+            assertNull(q["endswith"])
+            assertNull(q["limit"])
             respond(envelope("""{"numbers":[]}"""), HttpStatusCode.OK, jsonHeaders)
         }
         client.iNumbering.searchInventory(INumberingService.InventoryQuery(
-            npa = 201, nxx = 555, state = "NJ", rateCenter = "Newark",
-            contains = "9999", endsWith = "1234", limit = 10,
+            tnMask = "201555*", quantity = 25, province = "NJ", rateCenter = "Newark", lata = "220",
         ))
         client.close()
     }
 
-    // -- Coverage: Coverage query with both fields --
+    // -- Coverage: Coverage query sends countBy plus the spec filters --
     @Test
     fun coverageBothFields() = runTest {
         val client = mockClient { req ->
-            assertEquals("NJ", req.url.parameters["state"])
-            assertEquals("Newark", req.url.parameters["ratecenter"])
+            assertEquals("npanxx", req.url.parameters["countBy"])
+            assertEquals("NJ", req.url.parameters["locState"])
+            assertEquals("Newark", req.url.parameters["city"])
+            assertNull(req.url.parameters["state"])
+            assertNull(req.url.parameters["ratecenter"])
             respond(envelope("""{"coverage":[]}"""), HttpStatusCode.OK, jsonHeaders)
         }
-        client.iNumbering.coverage(INumberingService.CoverageQuery(state = "NJ", rateCenter = "Newark"))
+        client.iNumbering.coverage(INumberingService.CoverageQuery(
+            countBy = INumberingService.CountBy.NPANXX, locState = "NJ", city = "Newark",
+        ))
         client.close()
     }
 
-    // -- Coverage: numbersState with empty/null list omits the param --
+    // -- Coverage: numbersState always sends the required numbers param --
     @Test
-    fun numbersStateNullOmits() = runTest {
+    fun numbersStateSendsRequiredParam() = runTest {
         val client = mockClient { req ->
-            assertNull(req.url.parameters["numbers"])
+            assertEquals("2015550123,2015551235", req.url.parameters["numbers"])
             respond(envelope("""{"numbers":[]}"""), HttpStatusCode.OK, jsonHeaders)
         }
-        client.messaging.numbersState(null)
+        client.messaging.numbersState(listOf("2015550123", "2015551235"))
         client.close()
     }
 
-    @Test
-    fun numbersStateEmptyListOmits() = runTest {
-        val client = mockClient { req ->
-            assertNull(req.url.parameters["numbers"])
-            respond(envelope("""{"numbers":[]}"""), HttpStatusCode.OK, jsonHeaders)
-        }
-        client.messaging.numbersState(emptyList())
-        client.close()
-    }
-
-    // -- Coverage: history options with all fields --
+    // -- Coverage: history options with all fields (from/to are Unix timestamps) --
     @Test
     fun historyAllFields() = runTest {
         val client = mockClient { req ->
             val q = req.url.parameters
             assertEquals("2015550123", q["number"])
-            assertEquals("1", q["start"])
-            assertEquals("2", q["end"])
+            assertEquals("1", q["from"])
+            assertEquals("2", q["to"])
             assertEquals("sms", q["type"])
+            assertNull(q["start"])
+            assertNull(q["end"])
             respond(envelope("""{"messages":[]}"""), HttpStatusCode.OK, jsonHeaders)
         }
         client.messaging.history(MessagingService.HistoryOptions(
-            number = "2015550123", start = 1, end = 2, type = "sms",
+            number = "2015550123", from = 1, to = 2, type = "sms",
         ))
         client.close()
     }
@@ -177,7 +177,7 @@ class EdgeCasesTest {
     @Test
     fun accountAddDefaultMasterAccount() {
         val r = com.voicetel.sdk.models.Account.AddRequest(
-            username = 1000000002, name = "x", email = "y")
+            username = "1000000002", name = "x", email = "y")
         assertEquals(null, r.masterAccount)
     }
 
@@ -220,12 +220,13 @@ class EdgeCasesTest {
         assertEquals(2, o.maxRetries)
     }
 
-    // -- Coverage: AuthenticationService constants accessible --
+    // -- Coverage: Authentication type constants match the spec mapping --
+    // 0=Digest, 1=Lax (Digest | IP), 2=IP, 3=Strict (Digest + IP).
     @Test
     fun authenticationTypeConstants() {
         assertEquals(0, com.voicetel.sdk.models.Authentication.TYPE_DIGEST)
-        assertEquals(1, com.voicetel.sdk.models.Authentication.TYPE_IP_AUTH)
-        assertEquals(2, com.voicetel.sdk.models.Authentication.TYPE_DIGEST_OR_IP)
+        assertEquals(1, com.voicetel.sdk.models.Authentication.TYPE_DIGEST_OR_IP)
+        assertEquals(2, com.voicetel.sdk.models.Authentication.TYPE_IP_AUTH)
         assertEquals(3, com.voicetel.sdk.models.Authentication.TYPE_DIGEST_AND_IP)
     }
 

@@ -11,24 +11,27 @@ import kotlinx.serialization.json.JsonPrimitive
 /** SMS / MMS sending and 10DLC brand/campaign registration. */
 public class MessagingService internal constructor(private val t: Transport) {
 
-    /** Filters for [history]. */
+    /**
+     * Filters for [history]. [number] (ten-digit TN on the account) is
+     * required; [from]/[to] are Unix timestamps (defaults: now / 24h ago);
+     * [type] is `sms` (default), `mms`, or `dlr`.
+     */
     public class HistoryOptions(
-        public val number: String? = null,
-        public val start: Int? = null,
-        public val end: Int? = null,
+        public val number: String,
+        public val from: Int? = null,
+        public val to: Int? = null,
         public val type: String? = null,
     ) {
         public companion object {
-            public fun empty(): HistoryOptions = HistoryOptions()
             public fun forNumber(n: String): HistoryOptions = HistoryOptions(number = n)
         }
     }
 
-    public suspend fun history(opts: HistoryOptions = HistoryOptions.empty()): Messaging.HistoryData {
+    public suspend fun history(opts: HistoryOptions): Messaging.HistoryData {
         val q = mutableMapOf<String, Any?>()
-        opts.number?.let { q["number"] = it }
-        opts.start?.let { q["start"] = it }
-        opts.end?.let { q["end"] = it }
+        q["number"] = opts.number
+        opts.from?.let { q["from"] = it }
+        opts.to?.let { q["to"] = it }
         opts.type?.let { q["type"] = it }
         return t.request(HttpMethod.Get, "/v2.2/messages", q, null, null,
             Messaging.HistoryData.serializer(), true)
@@ -44,19 +47,23 @@ public class MessagingService internal constructor(private val t: Transport) {
             @Suppress("UNCHECKED_CAST") (Messaging.BrandCreateRequest.serializer() as KSerializer<Any>), body,
             Messaging.BrandCreateData.serializer(), true)
 
-    public suspend fun campaignStatus(): Messaging.CampaignStatusData =
-        t.request(HttpMethod.Get, "/v2.2/messaging/campaigns", null, null, null,
+    /** [ids] is a comma-separated list of campaign ids (max 100). */
+    public suspend fun campaignStatus(ids: String): Messaging.CampaignStatusData {
+        val q = mutableMapOf<String, Any?>()
+        q["ids"] = ids
+        return t.request(HttpMethod.Get, "/v2.2/messaging/campaigns", q, null, null,
             Messaging.CampaignStatusData.serializer(), true)
+    }
 
     public suspend fun createCampaign(body: Messaging.CampaignCreateRequest): Messaging.CampaignCreateData =
         t.request(HttpMethod.Post, "/v2.2/messaging/campaigns", null,
             @Suppress("UNCHECKED_CAST") (Messaging.CampaignCreateRequest.serializer() as KSerializer<Any>), body,
             Messaging.CampaignCreateData.serializer(), true)
 
-    /** Messaging state for many numbers at once. Pass null for "all numbers". */
-    public suspend fun numbersState(numbers: List<String>? = null): Numbers.MessagingListData {
+    /** Messaging state for many numbers at once (max 1000). */
+    public suspend fun numbersState(numbers: List<String>): Numbers.MessagingListData {
         val q = mutableMapOf<String, Any?>()
-        if (!numbers.isNullOrEmpty()) q["numbers"] = numbers.joinToString(",")
+        q["numbers"] = numbers.joinToString(",")
         return t.request(HttpMethod.Get, "/v2.2/numbers/messaging", q, null, null,
             Numbers.MessagingListData.serializer(), true)
     }

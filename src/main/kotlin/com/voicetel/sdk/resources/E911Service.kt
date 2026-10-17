@@ -3,6 +3,7 @@ package com.voicetel.sdk.resources
 import com.voicetel.sdk.Transport
 import com.voicetel.sdk.models.E911
 import io.ktor.http.HttpMethod
+import io.ktor.http.encodeURLPathPart
 import kotlinx.serialization.KSerializer
 
 /**
@@ -26,16 +27,16 @@ public class E911Service internal constructor(private val t: Transport) {
             E911.ValidateData.serializer(), true)
 
     public suspend fun get(dn: String): E911.RecordData =
-        t.request(HttpMethod.Get, "/v2.2/e911/$dn", null, null, null,
+        t.request(HttpMethod.Get, "/v2.2/e911/${dn.encodeURLPathPart()}", null, null, null,
             E911.RecordData.serializer(), true)
 
     public suspend fun provision(dn: String, body: E911.ProvisionByIdRequest): E911.RecordData =
-        t.request(HttpMethod.Put, "/v2.2/e911/$dn", null,
+        t.request(HttpMethod.Put, "/v2.2/e911/${dn.encodeURLPathPart()}", null,
             @Suppress("UNCHECKED_CAST") (E911.ProvisionByIdRequest.serializer() as KSerializer<Any>), body,
             E911.RecordData.serializer(), true)
 
     /** Returns Unit on 204 No Content. */
     public suspend fun remove(dn: String) {
-        t.requestNoBody(HttpMethod.Delete, "/v2.2/e911/$dn", null, null, true)
+        t.requestNoBody(HttpMethod.Delete, "/v2.2/e911/${dn.encodeURLPathPart()}", null, null, true)
     }
 }

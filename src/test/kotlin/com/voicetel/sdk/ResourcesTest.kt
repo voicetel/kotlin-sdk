@@ -13,6 +13,7 @@ import com.voicetel.sdk.models.Support
 import com.voicetel.sdk.resources.INumberingService
 import com.voicetel.sdk.resources.MessagingService
 import io.ktor.client.engine.mock.respond
+import io.ktor.client.utils.EmptyContent
 import io.ktor.http.HttpMethod
 import io.ktor.http.HttpStatusCode
 import kotlinx.coroutines.test.runTest
@@ -60,14 +61,16 @@ class ResourcesTest {
             respond(envelope("""{"username":"1000000002","name":"sub","password":"pw"}"""),
                 HttpStatusCode.OK, jsonHeaders)
         }
-        val d = client.account.add(Account.AddRequest(username = 1000000002, name = "sub", email = "x@y"))
+        val d = client.account.add(Account.AddRequest(username = "1000000002", name = "sub", email = "x@y"))
         assertEquals("pw", d.password)
         client.close()
     }
 
     @Test
     fun accountSignup() = runTest {
-        val client = mockClient { _ ->
+        val client = mockClient { req ->
+            // POST /v2.2/accounts is public — no Authorization header.
+            assertNull(req.headers["Authorization"])
             respond(envelope("""{"username":"1","name":"n","password":"p"}"""), HttpStatusCode.OK, jsonHeaders)
         }
         val d = client.account.signup(Account.SignupRequest(name = "n", email = "e"))
@@ -120,11 +123,13 @@ class ResourcesTest {
 
     @Test
     fun accountRegistration() = runTest {
+        // The registration payload is {agent, uri} — no expires field.
         val client = mockClient { _ ->
-            respond(envelope("""{"agent":"a","uri":"sip:x","expires":60}"""), HttpStatusCode.OK, jsonHeaders)
+            respond(envelope("""{"agent":"a","uri":"sip:x"}"""), HttpStatusCode.OK, jsonHeaders)
         }
         val d = client.account.registration()
-        assertEquals(60, d.expires)
+        assertEquals("a", d.agent)
+        assertEquals("sip:x", d.uri)
         client.close()
     }
 
@@ -158,14 +163,19 @@ class ResourcesTest {
             when (req.method) {
                 HttpMethod.Post -> respond(envelope("""{"added":[{"cidr":"1.0.0.0/24"}]}"""),
                     HttpStatusCode.OK, jsonHeaders)
-                HttpMethod.Delete -> respond(envelope("""{"removed":[{"cidr":"1.0.0.0/24"}]}"""),
-                    HttpStatusCode.OK, jsonHeaders)
+                HttpMethod.Delete -> {
+                    // DELETE /v2.2/acl takes cidrs as a query param, no body.
+                    assertEquals("1.0.0.0/24,2.0.0.0/24", req.url.parameters["cidrs"])
+                    assertTrue(req.body is EmptyContent)
+                    respond(envelope("""{"removed":[{"cidr":"1.0.0.0/24"}]}"""),
+                        HttpStatusCode.OK, jsonHeaders)
+                }
                 else -> error("unexpected method")
             }
         }
         val added = client.acl.add(Acl.ModifyRequest(listOf(CidrEntry("1.0.0.0/24"))))
         assertEquals(1, added.added.size)
-        val removed = client.acl.remove(Acl.ModifyRequest(listOf(CidrEntry("1.0.0.0/24"))))
+        val removed = client.acl.remove(listOf("1.0.0.0/24", "2.0.0.0/24"))
         assertEquals(1, removed.removed.size)
         client.close()
     }
@@ -261,11 +271,14 @@ class ResourcesTest {
         val client = mockClient { req ->
             when {
                 req.url.encodedPath == "/v2.2/inventory" -> {
-                    assertEquals("201", req.url.parameters["npa"])
+                    assertEquals("201", req.url.parameters["tnMask"])
                     respond(envelope("""{"numbers":[]}"""), HttpStatusCode.OK, jsonHeaders)
                 }
-                req.url.encodedPath == "/v2.2/inventory/coverage" ->
+                req.url.encodedPath == "/v2.2/inventory/coverage" -> {
+                    assertEquals("state", req.url.parameters["countBy"])
+                    assertEquals("NJ", req.url.parameters["locState"])
                     respond(envelope("""{"coverage":[]}"""), HttpStatusCode.OK, jsonHeaders)
+                }
                 req.url.encodedPath == "/v2.2/orders" ->
                     respond(envelope("""{"orderId":"o1","amountCharged":1.0,"numbersOrdered":["2015550123"],"failed":[]}"""),
                         HttpStatusCode.OK, jsonHeaders)
@@ -274,7 +287,7 @@ class ResourcesTest {
                         HttpStatusCode.OK, jsonHeaders)
                 req.url.encodedPath == "/v2.2/ports" && req.method == HttpMethod.Post ->
                     respond(envelope("""{"pid":"P1","ticket":7,"message":"queued"}"""), HttpStatusCode.OK, jsonHeaders)
-                req.url.encodedPath == "/v2.2/ports/9" ->
+                req.url.encodedPath == "/v2.2/ports/w1476" ->
                     respond(envelope("""{"port":{"id":"9","status":"open"}}"""), HttpStatusCode.OK, jsonHeaders)
                 req.url.encodedPath == "/v2.2/ports/availability/2015550123" ->
                     respond(envelope("""{"number":"2015550123","portable":true,"losingCarrier":"AT&T","localRoutingNumber":"2010000000","rateCenterTier":"A"}"""),
@@ -282,16 +295,17 @@ class ResourcesTest {
                 else -> error("unexpected ${req.url.encodedPath}")
             }
         }
-        val q = INumberingService.InventoryQuery(npa = 201)
+        val q = INumberingService.InventoryQuery(tnMask = "201")
         client.iNumbering.searchInventory(q)
-        client.iNumbering.coverage(INumberingService.CoverageQuery(state = "NJ"))
+        client.iNumbering.coverage(INumberingService.CoverageQuery(
+            countBy = INumberingService.CountBy.STATE, locState = "NJ"))
         val ord = client.iNumbering.order(INumbering.OrderCreateRequest(
             listOf(INumbering.OrderNumber.of("2015550123"))))
         assertEquals("o1", ord.orderId)
         val ports = client.iNumbering.ports()
         assertEquals("Complete", ports.ports.single().status)
         assertEquals("P1", ports.ports.single().pid)
-        client.iNumbering.port(9)
+        client.iNumbering.port("w1476")
         val ps = client.iNumbering.submitPort(
             INumbering.PortSubmitRequest(did = listOf("2015550123"), name = "X"))
         assertEquals(7, ps.ticket)
@@ -347,12 +361,14 @@ class ResourcesTest {
                         HttpStatusCode.OK, jsonHeaders)
                 path == "/v2.2/messaging/brands" ->
                     respond(envelope("""{"result":{"statusCode":"OK","status":"pending"}}"""), HttpStatusCode.OK, jsonHeaders)
-                path == "/v2.2/messaging/campaigns" && req.method == HttpMethod.Get ->
+                path == "/v2.2/messaging/campaigns" && req.method == HttpMethod.Get -> {
+                    assertEquals("C1", req.url.parameters["ids"])
                     respond(envelope("""{"campaigns":[{"id":"C1","status":"CAMPAIGN_DCA_COMPLETE",""" +
                         """"numbers":["2015550123"],"dca":{"electionComplete":true,""" +
                         """"electedCarriers":["AT&T","T-Mobile"],"carriers":[{"carrier":"T-Mobile",""" +
                         """"status":"ACTIVE","detail":"Campaign approved","updatedAt":"2026-01-02T03:04:05Z"}]}}]}"""),
                         HttpStatusCode.OK, jsonHeaders)
+                }
                 path == "/v2.2/messaging/campaigns" && req.method == HttpMethod.Post ->
                     respond(envelope("""{"result":{"statusCode":"OK","status":"pending"}}"""), HttpStatusCode.OK, jsonHeaders)
                 path == "/v2.2/numbers/messaging" -> {
@@ -365,7 +381,7 @@ class ResourcesTest {
         client.messaging.history(MessagingService.HistoryOptions.forNumber("2015550123"))
         client.messaging.send(Messaging.SendRequest("f", "t", "hi"))
         client.messaging.createBrand(Messaging.BrandCreateRequest("b", "B"))
-        val cs = client.messaging.campaignStatus()
+        val cs = client.messaging.campaignStatus("C1")
         val item = cs.campaigns.single()
         assertEquals("CAMPAIGN_DCA_COMPLETE", item.status)
         assertEquals(true, item.dca?.electionComplete)
@@ -378,12 +394,13 @@ class ResourcesTest {
     }
 
     @Test
-    fun historyOptionsEmpty() = runTest {
+    fun historyAlwaysSendsNumber() = runTest {
+        // number is a required query param on GET /v2.2/messages.
         val client = mockClient { req ->
-            assertTrue(req.url.parameters.isEmpty())
+            assertEquals("2015550123", req.url.parameters["number"])
             respond(envelope("""{"messages":[]}"""), HttpStatusCode.OK, jsonHeaders)
         }
-        client.messaging.history()
+        client.messaging.history(MessagingService.HistoryOptions.forNumber("2015550123"))
         client.close()
     }
 
@@ -477,10 +494,17 @@ class ResourcesTest {
                         """"job":{"campaignId":"C1","state":"queued","message":"queued",""" +
                         """"createdAt":"2026-01-01T00:00:00Z","updatedAt":"2026-01-01T00:00:00Z"}}"""),
                         HttpStatusCode.OK, jsonHeaders)
-                p == "/v2.2/numbers/2015550123/messaging-campaign" && m == HttpMethod.Delete ->
+                p == "/v2.2/numbers/2015550123/messaging-campaign" && m == HttpMethod.Delete -> {
+                    assertEquals("C1", req.url.parameters["campaignId"])
+                    assertTrue(req.body is EmptyContent)
                     respond(envelope("""{"number":"2015550123","campaignId":"C1","unassigned":true}"""), HttpStatusCode.OK, jsonHeaders)
-                p == "/v2.2/numbers/messaging-campaign" && m == HttpMethod.Delete ->
+                }
+                p == "/v2.2/numbers/messaging-campaign" && m == HttpMethod.Delete -> {
+                    assertEquals("2015550123,2015551235", req.url.parameters["numbers"])
+                    assertEquals("C1", req.url.parameters["campaignId"])
+                    assertTrue(req.body is EmptyContent)
                     respond(envelope("""{"campaignId":"C1","unassignedNumbers":["2015550123"],"failed":[]}"""), HttpStatusCode.OK, jsonHeaders)
+                }
                 p == "/v2.2/numbers/2015550123/port-out-pin" ->
                     respond(envelope("""{"number":"2015550123","portOutPin":"1234","changed":true}"""),
                         HttpStatusCode.OK, jsonHeaders)
@@ -518,8 +542,8 @@ class ResourcesTest {
         assertEquals("stale path-A registration found; removal requested", assign.warning)
         assertEquals("provisioning started", assign.message)
         assertEquals("queued", assign.job?.state)
-        client.numbers.unassignCampaign("2015550123")
-        client.numbers.bulkUnassignCampaign(listOf("2015550123"))
+        client.numbers.unassignCampaign("2015550123", "C1")
+        client.numbers.bulkUnassignCampaign(listOf("2015550123", "2015551235"), "C1")
         val pin = client.numbers.setPortOutPin("2015550123", Numbers.PortOutPinUpdateRequest("1234"))
         assertEquals("1234", pin.portOutPin)
         assertEquals(true, pin.changed)
@@ -567,7 +591,7 @@ class ResourcesTest {
     @Test
     fun numbersGetNotFound() = runTest {
         val client = mockClient { _ ->
-            respond("""{"error":"missing"}""", HttpStatusCode.NotFound, jsonHeaders)
+            respond("""{"status":"error","error":{"code":404,"message":"missing"}}""", HttpStatusCode.NotFound, jsonHeaders)
         }
         val err = assertFailsWith<ApiError> { client.numbers.get("9999999999") }
         assertTrue(err.isNotFound)
@@ -578,7 +602,7 @@ class ResourcesTest {
     fun aclConflictBodyPreserved() = runTest {
         val client = mockClient { _ ->
             respond(
-                """{"error":"conflict","data":{"failed":[{"cidr":"x","reason":"y"}]}}""",
+                """{"status":"error","error":{"code":409,"message":"conflict"},"data":{"failed":[{"cidr":"x","reason":"y"}]}}""",
                 HttpStatusCode.Conflict, jsonHeaders)
         }
         val err = assertFailsWith<ApiError> {

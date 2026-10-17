@@ -2,7 +2,7 @@
 
 The official Kotlin client for the [VoiceTel REST API](https://voicetel.com/docs/api/v2.2/) — provision numbers, place orders, validate e911, send messages, and manage your account, with `suspend` functions, coroutine-safe retries, and `kotlinx.serialization` end-to-end.
 
-![Version](https://img.shields.io/badge/version-2.2.15-blue)
+![Version](https://img.shields.io/badge/version-2.2.16-blue)
 ![Kotlin](https://img.shields.io/badge/kotlin-2.0%2B-purple)
 ![JVM](https://img.shields.io/badge/jvm-17%2B-blue)
 ![License](https://img.shields.io/badge/license-MIT-green)
@@ -28,12 +28,12 @@ The official Kotlin client for the [VoiceTel REST API](https://voicetel.com/docs
 ## ✨ Features
 
 ### 🛡️ Idiomatic, Strongly Typed Kotlin
-- Every one of the 73 API operations is a `suspend fun` returning a `@Serializable` `data class`.
+- Every one of the 79 API operations is a `suspend fun` returning a `@Serializable` `data class`.
 - `kotlinx.serialization.json` codec end-to-end — no Jackson, no reflection at runtime.
 - Sealed `ErrorKind`/`ApiError` so you can pattern-match failures without parsing HTTP codes.
 
 ### ⚡ Coroutines-Native Transport
-- Built on **Ktor client 2.3+** (CIO engine by default) — same primitives Android, Ktor servers, and Spring WebFlux apps already use.
+- Built on **Ktor client 3.x** (CIO engine by default) — same primitives Android, Ktor servers, and Spring WebFlux apps already use.
 - Cooperative cancellation: every request honors the surrounding `CoroutineScope`.
 - Backoff via `kotlinx.coroutines.delay` — never blocks a thread.
 
@@ -66,7 +66,7 @@ The official Kotlin client for the [VoiceTel REST API](https://voicetel.com/docs
 
 ```kotlin
 dependencies {
-    implementation("com.voicetel:voicetel-sdk-kotlin:2.2.15")
+    implementation("com.voicetel:voicetel-sdk-kotlin:2.2.16")
 }
 ```
 
@@ -76,7 +76,7 @@ dependencies {
 <dependency>
   <groupId>com.voicetel</groupId>
   <artifactId>voicetel-sdk-kotlin</artifactId>
-  <version>2.2.15</version>
+  <version>2.2.16</version>
 </dependency>
 ```
 
@@ -93,7 +93,7 @@ fun main() = runBlocking {
     val client = VoiceTelClient()
 
     // Exchange username + password for an API key (one-time per session).
-    client.login(1000000001, "hunter2")
+    client.login("1000000001", "hunter2")
 
     // Typed responses — your IDE knows the shape of `me`.
     val me: Account.Data = client.account.get()
@@ -121,7 +121,8 @@ val client = VoiceTelClient {
 }
 
 val coverage = client.iNumbering.coverage(
-    INumberingService.CoverageQuery(state = "NJ"))
+    INumberingService.CoverageQuery(
+        countBy = INumberingService.CountBy.NPANXX, locState = "NJ"))
 coverage.coverage.forEach { b ->
     println("${b.npa}-${b.nxx}: ${b.count} TNs available")
 }
@@ -137,7 +138,7 @@ Re-fetch the API key after any password change — the old one is invalidated.
 
 ```kotlin
 val client = VoiceTelClient()
-val key: String = client.login(1000000001, "hunter2")
+val key: String = client.login("1000000001", "hunter2")
 // `key` is the new 32-hex bearer; the client already has it installed.
 ```
 
@@ -150,7 +151,7 @@ val key: String = client.login(1000000001, "hunter2")
 | Authentication | `client.authentication` | `client.authentication.update(Authentication.PutRequest(authType = 1))` |
 | e911 | `client.e911` | `client.e911.validate(E911.AddressRequest(...))` |
 | Gateways | `client.gateways` | `client.gateways.list()` |
-| iNumbering | `client.iNumbering` | `client.iNumbering.searchInventory(InventoryQuery(npa = 201))` |
+| iNumbering | `client.iNumbering` | `client.iNumbering.searchInventory(InventoryQuery(tnMask = "201555*"))` |
 | Lookups | `client.lookups` | `client.lookups.lrn("2015550123", "2015550100")` |
 | Messaging | `client.messaging` | `client.messaging.send(Messaging.SendRequest(from, to, text))` |
 | Numbers | `client.numbers` | `client.numbers.assignCampaign("2015550123", Numbers.CampaignAssignRequest("C1"))` |
@@ -208,9 +209,10 @@ These endpoints are limited to **6 requests per hour per IP**:
 - `account` (`client.account.get()`)
 - `account/cdr` (`client.account.cdr(...)`)
 - `account/recurring-charges` (`client.account.recurringCharges()`)
-- `account/payments` (`client.account.payments()`)
-- `account/registration` (`client.account.registration()`)
 - `account/api-key` (`client.login(...)`)
+
+`POST /v2.2/messaging/health/check` (`client.messaging.healthCheck(number)`) is
+limited to **30 checks per hour per account**.
 
 The SDK automatically retries 429 responses with `Retry-After` honored, up to `maxRetries` (default 2). To bump it:
 

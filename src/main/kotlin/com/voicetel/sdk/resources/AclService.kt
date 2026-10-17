@@ -16,8 +16,15 @@ public class AclService internal constructor(private val t: Transport) {
             @Suppress("UNCHECKED_CAST") (Acl.ModifyRequest.serializer() as KSerializer<Any>), body,
             Acl.AddData.serializer(), true)
 
-    public suspend fun remove(body: Acl.ModifyRequest): Acl.RemoveData =
-        t.request(HttpMethod.Delete, "/v2.2/acl", null,
-            @Suppress("UNCHECKED_CAST") (Acl.ModifyRequest.serializer() as KSerializer<Any>), body,
+    /**
+     * Remove entries from the ACL. [cidrs] is required and sent as a
+     * comma-separated query parameter (e.g. `203.0.113.0/24`); no request
+     * body is sent.
+     */
+    public suspend fun remove(cidrs: List<String>): Acl.RemoveData {
+        val q = mutableMapOf<String, Any?>()
+        q["cidrs"] = cidrs.joinToString(",")
+        return t.request(HttpMethod.Delete, "/v2.2/acl", q, null, null,
             Acl.RemoveData.serializer(), true)
+    }
 }

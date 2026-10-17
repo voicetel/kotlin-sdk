@@ -58,7 +58,8 @@ public class ApiError(
     message: String,
     public val kind: ErrorKind = ErrorKind.Unknown,
     public val statusCode: Int = 0,
-    public val code: String? = null,
+    /** Numeric error code from the `error.code` envelope field, when present. */
+    public val code: Long? = null,
     public val body: JsonElement? = null,
     cause: Throwable? = null,
 ) : RuntimeException(message, cause) {

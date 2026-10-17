@@ -63,9 +63,6 @@ public object Numbers {
     @Serializable
     public data class PortOutPinUpdateRequest(public val pin: String)
 
-    @Serializable
-    public data class BulkUnassignRequest(public val numbers: List<String>)
-
     // ------------------------------------------------ entities & responses ---
 
     @Serializable

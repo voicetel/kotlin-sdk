@@ -30,7 +30,7 @@ import kotlinx.serialization.KSerializer
  *
  * ```
  * val client = VoiceTelClient()
- * client.login(1000000001, "hunter2")
+ * client.login("1000000001", "hunter2")
  * val me: Account.Data = client.account.get()
  * ```
  */
@@ -57,12 +57,13 @@ public class VoiceTelClient(options: ClientOptions = ClientOptions.defaults()) :
     /**
      * Exchange username + password for a 32-hex API key and install it on this client.
      *
-     * This call counts against the 6 req/hour/IP rate limit shared by every
-     * account endpoint (cdr, mrc, payments, registration, api-key).
+     * This call counts against the 6 req/hour/IP rate limit shared with
+     * `GET /v2.2/account`, `GET /v2.2/account/cdr` and
+     * `GET /v2.2/account/recurring-charges`.
      *
      * @return the new API key
      */
-    public suspend fun login(username: Int, password: String): String {
+    public suspend fun login(username: String, password: String): String {
         val body = Account.ApiKeyRequest(username, password)
         val data: Account.ApiKeyData = transport.request(
             method = HttpMethod.Post,

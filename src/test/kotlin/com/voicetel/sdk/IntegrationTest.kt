@@ -14,8 +14,8 @@ import kotlin.test.assertTrue
  */
 class IntegrationTest {
 
-    private fun creds(): Triple<Int, String, String>? {
-        val u = System.getenv("VOICETEL_USERNAME")?.toIntOrNull() ?: return null
+    private fun creds(): Triple<String, String, String>? {
+        val u = System.getenv("VOICETEL_USERNAME")?.takeIf { it.isNotBlank() } ?: return null
         val p = System.getenv("VOICETEL_PASSWORD") ?: return null
         val b = System.getenv("VOICETEL_BASE_URL") ?: Version.DEFAULT_BASE_URL
         return Triple(u, p, b)

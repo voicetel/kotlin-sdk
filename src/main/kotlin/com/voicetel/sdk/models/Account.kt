@@ -112,16 +112,18 @@ public object Account {
     public data class RegistrationData(
         public val agent: String? = null,
         public val uri: String? = null,
-        public val expires: Int? = null,
     )
 
-    /** POST /v2.2/account — admin-only sub-account creation. */
+    /**
+     * POST /v2.2/account — admin-only sub-account creation. Usernames are
+     * strings (10-digit numeric, but they do not fit in an [Int]).
+     */
     @Serializable
     public data class AddRequest(
-        public val username: Int? = null,
+        public val username: String? = null,
         public val name: String? = null,
         public val email: String? = null,
-        public val masterAccount: Int? = null,
+        public val masterAccount: String? = null,
     )
 
     @Serializable
@@ -177,5 +179,5 @@ public object Account {
     public data class ApiKeyData(public val apikey: String)
 
     @Serializable
-    internal data class ApiKeyRequest(val username: Int, val password: String)
+    internal data class ApiKeyRequest(val username: String, val password: String)
 }

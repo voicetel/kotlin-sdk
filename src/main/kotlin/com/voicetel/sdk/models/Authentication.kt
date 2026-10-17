@@ -6,8 +6,14 @@ import kotlinx.serialization.Serializable
 public object Authentication {
     /** 0=Digest, 1=Lax (Digest | IP), 2=IP, 3=Strict (Digest + IP). */
     public const val TYPE_DIGEST: Int = 0
-    public const val TYPE_IP_AUTH: Int = 1
-    public const val TYPE_DIGEST_OR_IP: Int = 2
+
+    /** Lax mode — Digest OR IP auth is accepted. */
+    public const val TYPE_DIGEST_OR_IP: Int = 1
+
+    /** IP-only auth. */
+    public const val TYPE_IP_AUTH: Int = 2
+
+    /** Strict mode — Digest AND IP auth are both required. */
     public const val TYPE_DIGEST_AND_IP: Int = 3
 
     @Serializable

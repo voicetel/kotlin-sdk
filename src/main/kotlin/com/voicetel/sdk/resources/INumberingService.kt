@@ -3,45 +3,65 @@ package com.voicetel.sdk.resources
 import com.voicetel.sdk.Transport
 import com.voicetel.sdk.models.INumbering
 import io.ktor.http.HttpMethod
+import io.ktor.http.encodeURLPathPart
 import kotlinx.serialization.KSerializer
 
 /** Inventory searches, orders, and port-ins. */
 public class INumberingService internal constructor(private val t: Transport) {
 
-    /** Filters for [searchInventory]. */
+    /**
+     * Filters for [searchInventory]. [tnMask] (prefix or wildcard pattern,
+     * e.g. `201`, `201555`, `201555*`) is required.
+     */
     public class InventoryQuery(
-        public var npa: Int? = null,
-        public var nxx: Int? = null,
-        public var state: String? = null,
+        public val tnMask: String,
+        public var quantity: Int? = null,
+        public var province: String? = null,
         public var rateCenter: String? = null,
-        public var contains: String? = null,
-        public var endsWith: String? = null,
-        public var limit: Int? = null,
+        public var lata: String? = null,
     )
 
-    /** Filters for [coverage]. */
+    /** Aggregation dimension for [coverage]. */
+    public enum class CountBy(public val wire: String) {
+        STATE("state"),
+        CITY("city"),
+        RATE_CENTER("rateCenter"),
+        NPANXX("npanxx"),
+        BLOCK("block"),
+        ;
+
+        override fun toString(): String = wire
+    }
+
+    /** Filters for [coverage]. [countBy] is required. */
     public class CoverageQuery(
-        public var state: String? = null,
-        public var rateCenter: String? = null,
+        public val countBy: CountBy,
+        public var locState: String? = null,
+        public var city: String? = null,
+        public var rcAbbre: String? = null,
+        public var npa: String? = null,
+        public var lata: String? = null,
     )
 
     public suspend fun searchInventory(q: InventoryQuery): INumbering.InventorySearchData {
         val m = mutableMapOf<String, Any?>()
-        q.npa?.let { m["npa"] = it }
-        q.nxx?.let { m["nxx"] = it }
-        q.state?.let { m["state"] = it }
-        q.rateCenter?.let { m["ratecenter"] = it }
-        q.contains?.let { m["contains"] = it }
-        q.endsWith?.let { m["endswith"] = it }
-        q.limit?.let { m["limit"] = it }
+        m["tnMask"] = q.tnMask
+        q.quantity?.let { m["quantity"] = it }
+        q.province?.let { m["province"] = it }
+        q.rateCenter?.let { m["rateCenter"] = it }
+        q.lata?.let { m["lata"] = it }
         return t.request(HttpMethod.Get, "/v2.2/inventory", m, null, null,
             INumbering.InventorySearchData.serializer(), true)
     }
 
     public suspend fun coverage(q: CoverageQuery): INumbering.InventoryCoverageData {
         val m = mutableMapOf<String, Any?>()
-        q.state?.let { m["state"] = it }
-        q.rateCenter?.let { m["ratecenter"] = it }
+        m["countBy"] = q.countBy.wire
+        q.locState?.let { m["locState"] = it }
+        q.city?.let { m["city"] = it }
+        q.rcAbbre?.let { m["rcAbbre"] = it }
+        q.npa?.let { m["npa"] = it }
+        q.lata?.let { m["lata"] = it }
         return t.request(HttpMethod.Get, "/v2.2/inventory/coverage", m, null, null,
             INumbering.InventoryCoverageData.serializer(), true)
     }
@@ -56,8 +76,12 @@ public class INumberingService internal constructor(private val t: Transport) {
         t.request(HttpMethod.Get, "/v2.2/ports", null, null, null,
             INumbering.PortListData.serializer(), true)
 
-    public suspend fun port(id: Int): INumbering.PortDetailData =
-        t.request(HttpMethod.Get, "/v2.2/ports/$id", null, null, null,
+    /**
+     * Get a single port-in record. [id] is the 5-character alphanumeric pid
+     * from the list response's `pid` field.
+     */
+    public suspend fun port(id: String): INumbering.PortDetailData =
+        t.request(HttpMethod.Get, "/v2.2/ports/${id.encodeURLPathPart()}", null, null, null,
             INumbering.PortDetailData.serializer(), true)
 
     public suspend fun submitPort(body: INumbering.PortSubmitRequest): INumbering.PortSubmitData =
@@ -66,6 +90,6 @@ public class INumberingService internal constructor(private val t: Transport) {
             INumbering.PortSubmitData.serializer(), true)
 
     public suspend fun portAvailability(number: String): INumbering.PortAvailabilityData =
-        t.request(HttpMethod.Get, "/v2.2/ports/availability/$number", null, null, null,
+        t.request(HttpMethod.Get, "/v2.2/ports/availability/${number.encodeURLPathPart()}", null, null, null,
             INumbering.PortAvailabilityData.serializer(), true)
 }

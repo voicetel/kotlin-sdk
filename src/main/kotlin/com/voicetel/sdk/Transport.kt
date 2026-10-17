@@ -23,8 +23,6 @@ import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
-import kotlinx.serialization.json.jsonObject
-import kotlinx.serialization.json.jsonPrimitive
 import kotlin.math.min
 
 /**
@@ -201,17 +199,13 @@ public class Transport internal constructor(opts: ClientOptions) {
     private suspend fun <T> decodeBody(resp: HttpResponse, deserializer: DeserializationStrategy<T>): T {
         val text = resp.bodyAsText()
         if (text.isEmpty()) {
-            // Try to decode an empty object; if that fails, throw.
-            return try {
-                json.decodeFromString(deserializer, "{}")
-            } catch (ex: Throwable) {
-                throw ApiError(
-                    "empty response body for non-Unit return type",
-                    kind = ErrorKind.Unknown,
-                    statusCode = resp.status.value,
-                    cause = ex,
-                )
-            }
+            // A 2xx with no body is a protocol violation for a typed endpoint —
+            // never synthesize an all-default DTO out of thin air.
+            throw ApiError(
+                "empty response body for non-Unit return type",
+                kind = ErrorKind.Unknown,
+                statusCode = resp.status.value,
+            )
         }
 
         val root: JsonElement = try {
@@ -248,18 +242,23 @@ public class Transport internal constructor(opts: ClientOptions) {
         val status = resp.status.value
         val text = runCatching { resp.bodyAsText() }.getOrDefault("")
 
+        // The spec error envelope is
+        // {"status":"error","error":{"code":<int>,"message":<string>}}.
         var bodyJson: JsonElement? = null
-        var code: String? = null
+        var code: Long? = null
         var message = "HTTP $status"
         if (text.isNotEmpty()) {
             runCatching {
                 val root = json.parseToJsonElement(text)
                 bodyJson = root
                 if (root is JsonObject) {
-                    val c = root["code"] ?: root["error"]
-                    if (c is JsonPrimitive && c.isString) code = c.content
-                    val m = root["message"] ?: root["error"]
-                    if (m is JsonPrimitive && m.isString) message = m.content
+                    val err = root["error"]
+                    if (err is JsonObject) {
+                        val c = err["code"]
+                        if (c is JsonPrimitive) code = c.content.toLongOrNull()
+                        val m = err["message"]
+                        if (m is JsonPrimitive && m.isString) message = m.content
+                    }
                 }
             }
         }
@@ -278,7 +277,8 @@ public class Transport internal constructor(opts: ClientOptions) {
             val ra = resp.headers[HttpHeaders.RetryAfter]
             if (ra != null) {
                 val secs = ra.trim().toLongOrNull()
-                if (secs != null && secs >= 0) return secs * 1000L
+                // Honor Retry-After but never sleep longer than the 8s cap.
+                if (secs != null && secs >= 0) return min(secs * 1000L, 8_000L)
             }
         }
         val base = 500L

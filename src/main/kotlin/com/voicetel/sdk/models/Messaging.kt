@@ -46,7 +46,7 @@ public object Messaging {
         public val destinationNumber: String? = null,
         public val direction: String? = null,
         public val rate: String? = null,
-        public val number: Int? = null,
+        public val number: String? = null,
         public val message: String? = null,
     )
 

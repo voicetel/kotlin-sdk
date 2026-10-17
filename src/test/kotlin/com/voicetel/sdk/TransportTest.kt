@@ -37,7 +37,7 @@ class TransportTest {
     @Test
     fun error400MapsBadRequest() = runTest {
         val client = mockClient { _ ->
-            respond("""{"error":"oops"}""", HttpStatusCode.BadRequest, jsonHeaders)
+            respond("""{"status":"error","error":{"code":400,"message":"oops"}}""", HttpStatusCode.BadRequest, jsonHeaders)
         }
         val err = assertFailsWith<ApiError> { client.account.get() }
         assertEquals(ErrorKind.BadRequest, err.kind)
@@ -46,9 +46,26 @@ class TransportTest {
     }
 
     @Test
+    fun specErrorEnvelopeExtractsNestedCodeAndMessage() = runTest {
+        // Canonical errorResponse shape: {"status":"error","error":{"code":<int>,"message":<string>}}
+        val client = mockClient { _ ->
+            respond(
+                """{"status":"error","error":{"code":403,"message":"Account Disabled"}}""",
+                HttpStatusCode.Forbidden, jsonHeaders,
+            )
+        }
+        val err = assertFailsWith<ApiError> { client.account.get() }
+        assertEquals(ErrorKind.PermissionDenied, err.kind)
+        assertEquals(403, err.statusCode)
+        assertEquals(403L, err.code)
+        assertEquals("Account Disabled", err.message)
+        client.close()
+    }
+
+    @Test
     fun error401IsAuthentication() = runTest {
         val client = mockClient { _ ->
-            respond("""{"message":"no auth"}""", HttpStatusCode.Unauthorized, jsonHeaders)
+            respond("""{"status":"error","error":{"code":401,"message":"no auth"}}""", HttpStatusCode.Unauthorized, jsonHeaders)
         }
         val err = assertFailsWith<ApiError> { client.account.get() }
         assertEquals(ErrorKind.Authentication, err.kind)
@@ -59,7 +76,7 @@ class TransportTest {
     @Test
     fun error403IsPermissionDenied() = runTest {
         val client = mockClient { _ ->
-            respond("""{"error":"nope"}""", HttpStatusCode.Forbidden, jsonHeaders)
+            respond("""{"status":"error","error":{"code":403,"message":"nope"}}""", HttpStatusCode.Forbidden, jsonHeaders)
         }
         val err = assertFailsWith<ApiError> { client.account.get() }
         assertEquals(ErrorKind.PermissionDenied, err.kind)
@@ -69,7 +86,7 @@ class TransportTest {
     @Test
     fun error404IsNotFound() = runTest {
         val client = mockClient { _ ->
-            respond("""{"error":"missing"}""", HttpStatusCode.NotFound, jsonHeaders)
+            respond("""{"status":"error","error":{"code":404,"message":"missing"}}""", HttpStatusCode.NotFound, jsonHeaders)
         }
         val err = assertFailsWith<ApiError> { client.numbers.get("9999999999") }
         assertTrue(err.isNotFound)
@@ -79,7 +96,7 @@ class TransportTest {
     @Test
     fun error409IsConflictWithBody() = runTest {
         val client = mockClient { _ ->
-            respond("""{"error":"conflict","data":{"failed":[]}}""", HttpStatusCode.Conflict, jsonHeaders)
+            respond("""{"status":"error","error":{"code":409,"message":"conflict"},"data":{"failed":[]}}""", HttpStatusCode.Conflict, jsonHeaders)
         }
         val err = assertFailsWith<ApiError> { client.account.get() }
         assertTrue(err.isConflict)
@@ -104,7 +121,7 @@ class TransportTest {
             calls++
             if (calls == 1) {
                 respond(
-                    """{"error":"rate limit"}""",
+                    """{"status":"error","error":{"code":429,"message":"rate limit"}}""",
                     HttpStatusCode.TooManyRequests,
                     headersOf(HttpHeaders.RetryAfter to listOf("0")),
                 )
@@ -124,7 +141,7 @@ class TransportTest {
         val client = mockClientRetries(maxRetries = 1) { _ ->
             calls++
             respond(
-                """{"error":"rate"}""",
+                """{"status":"error","error":{"code":429,"message":"rate"}}""",
                 HttpStatusCode.TooManyRequests,
                 headersOf(HttpHeaders.RetryAfter to listOf("0")),
             )
@@ -152,6 +169,19 @@ class TransportTest {
         }
         val err = assertFailsWith<ApiError> { client.account.get() }
         assertEquals(ErrorKind.Server, err.kind)
+        client.close()
+    }
+
+    @Test
+    fun emptySuccessBodyIsProtocolError() = runTest {
+        // A 2xx with an empty body must not be synthesized into an
+        // all-default DTO — it is a protocol violation on a typed endpoint.
+        val client = mockClient { _ ->
+            respond("", HttpStatusCode.OK, jsonHeaders)
+        }
+        val err = assertFailsWith<ApiError> { client.account.get() }
+        assertEquals(ErrorKind.Unknown, err.kind)
+        assertEquals(200, err.statusCode)
         client.close()
     }
 
@@ -211,7 +241,7 @@ class TransportTest {
             assertEquals("/v2.2/account/api-key", req.url.encodedPath)
             respond(envelope("""{"apikey":"NEWKEY"}"""), HttpStatusCode.OK, jsonHeaders)
         }
-        val key = client.login(1000000001, "hunter2")
+        val key = client.login("1000000001", "hunter2")
         assertEquals("NEWKEY", key)
         assertEquals("NEWKEY", client.apiKey)
         client.close()
@@ -222,7 +252,7 @@ class TransportTest {
         val client = mockClient(apiKey = "") { _ ->
             respond(envelope("""{"apikey":""}"""), HttpStatusCode.OK, jsonHeaders)
         }
-        val err = assertFailsWith<ApiError> { client.login(1, "x") }
+        val err = assertFailsWith<ApiError> { client.login("1", "x") }
         assertEquals(ErrorKind.Authentication, err.kind)
         client.close()
     }

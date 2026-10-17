@@ -9,8 +9,8 @@ plugins {
 }
 
 group = "com.voicetel"
-version = "2.2.15"
-description = "Official Kotlin SDK for the VoiceTel REST API (v2.2.15)."
+version = "2.2.16"
+description = "Official Kotlin SDK for the VoiceTel REST API (v2.2.16)."
 
 repositories {
     mavenCentral()

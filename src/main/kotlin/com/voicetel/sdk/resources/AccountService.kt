@@ -8,11 +8,12 @@ import kotlinx.serialization.KSerializer
 /**
  * Operations under the Account tag.
  *
- * Note: [cdr], [recurringCharges], [payments], [registration] and
- * `client.login()` share a 6 req/hour/IP rate limit. Bursting will trigger 429s.
+ * Note: [get], [cdr], [recurringCharges] and `client.login()` share a
+ * 6 req/hour/IP rate limit. Bursting will trigger 429s.
  */
 public class AccountService internal constructor(private val t: Transport) {
 
+    /** Rate-limited (6/hr/IP). */
     public suspend fun get(): Account.Data =
         t.request(HttpMethod.Get, "/v2.2/account", null, null, null, Account.Data.serializer(), true)
 
@@ -26,11 +27,11 @@ public class AccountService internal constructor(private val t: Transport) {
             @Suppress("UNCHECKED_CAST") (Account.AddRequest.serializer() as KSerializer<Any>), body,
             Account.AddData.serializer(), true)
 
-    /** Public sign-up flow. */
+    /** Public sign-up flow — no auth required. */
     public suspend fun signup(body: Account.SignupRequest): Account.SignupData =
         t.request(HttpMethod.Post, "/v2.2/accounts", null,
             @Suppress("UNCHECKED_CAST") (Account.SignupRequest.serializer() as KSerializer<Any>), body,
-            Account.SignupData.serializer(), true)
+            Account.SignupData.serializer(), false)
 
     /** Rate-limited (6/hr/IP). */
     public suspend fun cdr(start: Int? = null, end: Int? = null): Account.CdrData {
@@ -40,21 +41,26 @@ public class AccountService internal constructor(private val t: Transport) {
         return t.request(HttpMethod.Get, "/v2.2/account/cdr", q, null, null, Account.CdrData.serializer(), true)
     }
 
-    public suspend fun credits(): Account.CreditsData =
-        t.request(HttpMethod.Get, "/v2.2/account/credits", null, null, null,
+    /**
+     * Credit history, optionally filtered by invoice state —
+     * [status] is `paid` or `unpaid`, null for both.
+     */
+    public suspend fun credits(status: String? = null): Account.CreditsData {
+        val q = mutableMapOf<String, Any?>()
+        if (status != null) q["status"] = status
+        return t.request(HttpMethod.Get, "/v2.2/account/credits", q, null, null,
             Account.CreditsData.serializer(), true)
+    }
 
     /** Rate-limited (6/hr/IP). */
     public suspend fun recurringCharges(): Account.MrcData =
         t.request(HttpMethod.Get, "/v2.2/account/recurring-charges", null, null, null,
             Account.MrcData.serializer(), true)
 
-    /** Rate-limited (6/hr/IP). */
     public suspend fun payments(): Account.PaymentsData =
         t.request(HttpMethod.Get, "/v2.2/account/payments", null, null, null,
             Account.PaymentsData.serializer(), true)
 
-    /** Rate-limited (6/hr/IP). */
     public suspend fun registration(): Account.RegistrationData =
         t.request(HttpMethod.Get, "/v2.2/account/registration", null, null, null,
             Account.RegistrationData.serializer(), true)

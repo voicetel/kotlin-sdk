@@ -3,6 +3,7 @@ package com.voicetel.sdk.resources
 import com.voicetel.sdk.Transport
 import com.voicetel.sdk.models.Support
 import io.ktor.http.HttpMethod
+import io.ktor.http.encodeURLPathPart
 import kotlinx.serialization.KSerializer
 
 /** Support tickets — create, read, update, delete, reply. */
@@ -18,25 +19,25 @@ public class SupportService internal constructor(private val t: Transport) {
             Support.TicketData.serializer(), true)
 
     public suspend fun get(id: Int): Support.TicketData =
-        t.request(HttpMethod.Get, "/v2.2/support/tickets/$id", null, null, null,
+        t.request(HttpMethod.Get, "/v2.2/support/tickets/${id.toString().encodeURLPathPart()}", null, null, null,
             Support.TicketData.serializer(), true)
 
     public suspend fun update(id: Int, body: Support.UpdateRequest): Support.UpdateData =
-        t.request(HttpMethod.Put, "/v2.2/support/tickets/$id", null,
+        t.request(HttpMethod.Put, "/v2.2/support/tickets/${id.toString().encodeURLPathPart()}", null,
             @Suppress("UNCHECKED_CAST") (Support.UpdateRequest.serializer() as KSerializer<Any>), body,
             Support.UpdateData.serializer(), true)
 
     /** Admin only. Returns Unit on 204 No Content. */
     public suspend fun delete(id: Int) {
-        t.requestNoBody(HttpMethod.Delete, "/v2.2/support/tickets/$id", null, null, true)
+        t.requestNoBody(HttpMethod.Delete, "/v2.2/support/tickets/${id.toString().encodeURLPathPart()}", null, null, true)
     }
 
     public suspend fun messages(id: Int): Support.ThreadsData =
-        t.request(HttpMethod.Get, "/v2.2/support/tickets/$id/messages", null, null, null,
+        t.request(HttpMethod.Get, "/v2.2/support/tickets/${id.toString().encodeURLPathPart()}/messages", null, null, null,
             Support.ThreadsData.serializer(), true)
 
     public suspend fun reply(id: Int, body: Support.ReplyRequest): Support.ReplyData =
-        t.request(HttpMethod.Post, "/v2.2/support/tickets/$id/replies", null,
+        t.request(HttpMethod.Post, "/v2.2/support/tickets/${id.toString().encodeURLPathPart()}/replies", null,
             @Suppress("UNCHECKED_CAST") (Support.ReplyRequest.serializer() as KSerializer<Any>), body,
             Support.ReplyData.serializer(), true)
 }
