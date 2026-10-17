@@ -5,6 +5,7 @@ plugins {
     kotlin("plugin.serialization") version "2.4.20"
     `java-library`
     `maven-publish`
+    id("com.vanniktech.maven.publish") version "0.37.0"
     jacoco
 }
 
@@ -85,36 +86,33 @@ tasks.check {
     dependsOn(tasks.jacocoTestReport)
 }
 
-publishing {
-    publications {
-        create<MavenPublication>("maven") {
-            from(components["java"])
-            artifactId = "voicetel-sdk-kotlin"
-            pom {
-                name.set("VoiceTel Kotlin SDK")
-                description.set(project.description)
-                url.set("https://github.com/voicetel/kotlin-sdk")
-                licenses {
-                    license {
-                        name.set("MIT License")
-                        url.set("https://opensource.org/licenses/MIT")
-                        distribution.set("repo")
-                    }
-                }
-                developers {
-                    developer {
-                        name.set("VoiceTel")
-                        email.set("support@voicetel.com")
-                        organization.set("VoiceTel Communications")
-                        organizationUrl.set("https://voicetel.com")
-                    }
-                }
-                scm {
-                    connection.set("scm:git:https://github.com/voicetel/kotlin-sdk.git")
-                    developerConnection.set("scm:git:git@github.com:voicetel/kotlin-sdk.git")
-                    url.set("https://github.com/voicetel/kotlin-sdk")
-                }
+mavenPublishing {
+    coordinates("com.voicetel", "voicetel-sdk-kotlin", version.toString())
+    publishToMavenCentral()
+    signAllPublications()
+    pom {
+        name.set("VoiceTel Kotlin SDK")
+        description.set(project.description)
+        url.set("https://github.com/voicetel/kotlin-sdk")
+        licenses {
+            license {
+                name.set("MIT License")
+                url.set("https://opensource.org/licenses/MIT")
+                distribution.set("repo")
             }
+        }
+        developers {
+            developer {
+                name.set("VoiceTel")
+                email.set("support@voicetel.com")
+                organization.set("VoiceTel Communications")
+                organizationUrl.set("https://voicetel.com")
+            }
+        }
+        scm {
+            connection.set("scm:git:https://github.com/voicetel/kotlin-sdk.git")
+            developerConnection.set("scm:git:git@github.com:voicetel/kotlin-sdk.git")
+            url.set("https://github.com/voicetel/kotlin-sdk")
         }
     }
 }
