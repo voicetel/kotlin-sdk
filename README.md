@@ -2,7 +2,7 @@
 
 The official Kotlin client for the [VoiceTel REST API](https://voicetel.com/docs/api/v2.2/) — provision numbers, place orders, validate e911, send messages, and manage your account, with `suspend` functions, coroutine-safe retries, and `kotlinx.serialization` end-to-end.
 
-![Version](https://img.shields.io/badge/version-2.2.16-blue)
+![Version](https://img.shields.io/badge/version-2.2.17-blue)
 ![Kotlin](https://img.shields.io/badge/kotlin-2.0%2B-purple)
 ![JVM](https://img.shields.io/badge/jvm-17%2B-blue)
 ![License](https://img.shields.io/badge/license-MIT-green)
@@ -66,7 +66,7 @@ The official Kotlin client for the [VoiceTel REST API](https://voicetel.com/docs
 
 ```kotlin
 dependencies {
-    implementation("com.voicetel:voicetel-sdk-kotlin:2.2.16")
+    implementation("com.voicetel:voicetel-sdk-kotlin:2.2.17")
 }
 ```
 
@@ -76,7 +76,7 @@ dependencies {
 <dependency>
   <groupId>com.voicetel</groupId>
   <artifactId>voicetel-sdk-kotlin</artifactId>
-  <version>2.2.16</version>
+  <version>2.2.17</version>
 </dependency>
 ```
 

@@ -11,11 +11,15 @@ public object Numbers {
     @Serializable
     public data class AddRequest(
         public val number: String,
+        /** Global route type: 1 USER, 2 T30, 3 VOICE_BRIDGE, 4 DID (default), 5 T38, 6 VOICEML, 8 SDN, 9 MOBILE. */
         public val route: Int? = null,
     )
 
     @Serializable
-    public data class RouteRequest(public val route: Int)
+    public data class RouteRequest(
+        /** Global route type: 1 USER, 2 T30, 3 VOICE_BRIDGE, 4 DID (default), 5 T38, 6 VOICEML, 8 SDN, 9 MOBILE. */
+        public val route: Int,
+    )
 
     @Serializable
     public data class CnamRequest(public val enabled: Boolean)
@@ -57,6 +61,7 @@ public object Numbers {
     @Serializable
     public data class MoveRequest(
         public val accountId: Int,
+        /** Global route type: 1 USER, 2 T30, 3 VOICE_BRIDGE, 4 DID (default), 5 T38, 6 VOICEML, 8 SDN, 9 MOBILE. */
         public val route: Int? = null,
     )
 
@@ -69,6 +74,7 @@ public object Numbers {
     public data class Detail(
         public val number: String? = null,
         public val translated: String? = null,
+        /** Global route type: 1 USER, 2 T30, 3 VOICE_BRIDGE, 4 DID (default), 5 T38, 6 VOICEML, 8 SDN, 9 MOBILE. */
         public val route: Int? = null,
         public val gateway: String? = null,
         public val cnam: Boolean? = null,
@@ -120,6 +126,7 @@ public object Numbers {
     @Serializable
     public data class AddData(
         public val number: String? = null,
+        /** Global route type: 1 USER, 2 T30, 3 VOICE_BRIDGE, 4 DID (default), 5 T38, 6 VOICEML, 8 SDN, 9 MOBILE. */
         public val route: Int? = null,
     )
 
@@ -159,12 +166,14 @@ public object Numbers {
     public data class MoveData(
         public val number: String? = null,
         public val accountId: Int? = null,
+        /** Global route type on the destination account after the move: 1 USER, 2 T30, 3 VOICE_BRIDGE, 4 DID (default), 5 T38, 6 VOICEML, 8 SDN, 9 MOBILE. */
         public val route: Int? = null,
     )
 
     @Serializable
     public data class RouteData(
         public val number: String? = null,
+        /** Global route type: 1 USER, 2 T30, 3 VOICE_BRIDGE, 4 DID (default), 5 T38, 6 VOICEML, 8 SDN, 9 MOBILE. */
         public val route: Int? = null,
     )
 

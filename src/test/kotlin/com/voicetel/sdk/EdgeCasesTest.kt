@@ -152,9 +152,9 @@ class EdgeCasesTest {
         val json = Json
         val plainStr = json.encodeToString(INumbering.OrderNumber.serializer(), INumbering.OrderNumber.of("2015550123"))
         assertEquals(""""2015550123"""", plainStr)
-        val objStr = json.encodeToString(INumbering.OrderNumber.serializer(), INumbering.OrderNumber.of("2015550123", 7))
+        val objStr = json.encodeToString(INumbering.OrderNumber.serializer(), INumbering.OrderNumber.of("2015550123", 4))
         assertTrue(objStr.contains("\"number\":\"2015550123\""))
-        assertTrue(objStr.contains("\"route\":7"))
+        assertTrue(objStr.contains("\"route\":4"))
     }
 
     @Test
@@ -163,8 +163,8 @@ class EdgeCasesTest {
         val plain = json.decodeFromString(INumbering.OrderNumber.serializer(), """"2015550123"""")
         assertEquals(INumbering.OrderNumber.of("2015550123"), plain)
         val obj = json.decodeFromString(INumbering.OrderNumber.serializer(),
-            """{"number":"2015550123","route":7}""")
-        assertEquals(INumbering.OrderNumber.of("2015550123", 7), obj)
+            """{"number":"2015550123","route":4}""")
+        assertEquals(INumbering.OrderNumber.of("2015550123", 4), obj)
     }
 
     @Test
@@ -206,10 +206,10 @@ class EdgeCasesTest {
     // -- Coverage: Version object instantiation defaults --
     @Test
     fun versionObjectAccessors() {
-        assertEquals("2.2.15", Version.SDK_VERSION)
-        assertEquals("v2.2.15", Version.API_VERSION)
+        assertEquals("2.2.17", Version.SDK_VERSION)
+        assertEquals("v2.2.17", Version.API_VERSION)
         assertTrue(Version.DEFAULT_USER_AGENT.contains("kotlin"))
-        assertTrue(Version.DEFAULT_USER_AGENT.contains("2.2.15"))
+        assertTrue(Version.DEFAULT_USER_AGENT.contains("2.2.17"))
     }
 
     // -- Coverage: ClientOptions defaults companion --
