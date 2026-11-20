@@ -14,6 +14,7 @@ import com.voicetel.sdk.resources.INumberingService
 import com.voicetel.sdk.resources.MessagingService
 import io.ktor.client.engine.mock.respond
 import io.ktor.client.utils.EmptyContent
+import io.ktor.http.content.TextContent
 import io.ktor.http.HttpMethod
 import io.ktor.http.HttpStatusCode
 import kotlinx.coroutines.test.runTest
@@ -164,9 +165,12 @@ class ResourcesTest {
                 HttpMethod.Post -> respond(envelope("""{"added":[{"cidr":"1.0.0.0/24"}]}"""),
                     HttpStatusCode.OK, jsonHeaders)
                 HttpMethod.Delete -> {
-                    // DELETE /v2.2/acl takes cidrs as a query param, no body.
-                    assertEquals("1.0.0.0/24,2.0.0.0/24", req.url.parameters["cidrs"])
-                    assertTrue(req.body is EmptyContent)
+                    // v2.2.21: DELETE /v2.2/acl takes the same {"acl":[{cidr}]}
+                    // body as POST; the old cidrs query parameter is not read.
+                    assertTrue(req.url.parameters.names().isEmpty(),
+                        "query must be empty, was: ${req.url.parameters}")
+                    val sent = (req.body as TextContent).text
+                    assertEquals("""{"acl":[{"cidr":"1.0.0.0/24"},{"cidr":"2.0.0.0/24"}]}""", sent)
                     respond(envelope("""{"removed":[{"cidr":"1.0.0.0/24"}]}"""),
                         HttpStatusCode.OK, jsonHeaders)
                 }

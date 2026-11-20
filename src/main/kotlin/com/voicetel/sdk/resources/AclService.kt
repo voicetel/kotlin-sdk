@@ -2,6 +2,7 @@ package com.voicetel.sdk.resources
 
 import com.voicetel.sdk.Transport
 import com.voicetel.sdk.models.Acl
+import com.voicetel.sdk.models.CidrEntry
 import io.ktor.http.HttpMethod
 import kotlinx.serialization.KSerializer
 
@@ -17,14 +18,18 @@ public class AclService internal constructor(private val t: Transport) {
             Acl.AddData.serializer(), true)
 
     /**
-     * Remove entries from the ACL. [cidrs] is required and sent as a
-     * comma-separated query parameter (e.g. `203.0.113.0/24`); no request
-     * body is sent.
+     * Removes entries from the ACL. Sends the same `{"acl":[{"cidr":...}]}`
+     * JSON body as [add] (spec v2.2.21) — the handler does not read the old
+     * `cidrs` query parameter. Entries that do not exist fail individually:
+     * the 409 error body carries `removed` and `failed` detail on its
+     * `data` object.
      */
-    public suspend fun remove(cidrs: List<String>): Acl.RemoveData {
-        val q = mutableMapOf<String, Any?>()
-        q["cidrs"] = cidrs.joinToString(",")
-        return t.request(HttpMethod.Delete, "/v2.2/acl", q, null, null,
+    public suspend fun remove(cidrs: List<String>): Acl.RemoveData =
+        remove(Acl.ModifyRequest(cidrs.map { CidrEntry(it) }))
+
+    /** Removes entries, taking the same body shape as [add]. */
+    public suspend fun remove(body: Acl.ModifyRequest): Acl.RemoveData =
+        t.request(HttpMethod.Delete, "/v2.2/acl", null,
+            @Suppress("UNCHECKED_CAST") (Acl.ModifyRequest.serializer() as KSerializer<Any>), body,
             Acl.RemoveData.serializer(), true)
-    }
 }

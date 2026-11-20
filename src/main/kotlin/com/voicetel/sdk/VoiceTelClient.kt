@@ -5,6 +5,7 @@ import com.voicetel.sdk.resources.AccountService
 import com.voicetel.sdk.resources.AclService
 import com.voicetel.sdk.resources.AuthenticationService
 import com.voicetel.sdk.resources.E911Service
+import com.voicetel.sdk.resources.FaxService
 import com.voicetel.sdk.resources.GatewaysService
 import com.voicetel.sdk.resources.INumberingService
 import com.voicetel.sdk.resources.LookupsService
@@ -41,6 +42,7 @@ public class VoiceTelClient(options: ClientOptions = ClientOptions.defaults()) :
     public val acl: AclService = AclService(transport)
     public val authentication: AuthenticationService = AuthenticationService(transport)
     public val e911: E911Service = E911Service(transport)
+    public val fax: FaxService = FaxService(transport)
     public val gateways: GatewaysService = GatewaysService(transport)
     public val iNumbering: INumberingService = INumberingService(transport)
     public val lookups: LookupsService = LookupsService(transport)
