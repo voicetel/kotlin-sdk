@@ -9,13 +9,23 @@ public object Messaging {
     /**
      * Body for POST /v2.2/messages. Wire field names are `fromNumber` /
      * `toNumber`.
+     *
+     * [text] is required for SMS and optional for MMS (at most 2048
+     * characters there) — pass null with [mediaUrls] set to send a media-only
+     * MMS. [mediaUrls], when set, must contain at least one publicly
+     * reachable http(s) URL; its presence makes the message an MMS. Nulls are
+     * not serialized — only the fields you set are sent.
      */
     @Serializable
     public data class SendRequest(
         public val fromNumber: String,
         public val toNumber: String,
-        public val text: String,
+        /** Message body (UTF-8). Required for SMS; optional for MMS (media-only MMS is valid). */
+        public val text: String? = null,
+        /** Deprecated by the API: accepted for compatibility but not delivered on most messaging routes; do not rely on it. */
+        @Deprecated("subject is deprecated by the API and not delivered on most messaging routes")
         public val subject: String? = null,
+        /** Publicly reachable http(s) URLs of the media to send; non-empty when set. Presence makes this an MMS. */
         public val mediaUrls: List<String>? = null,
     )
 
@@ -40,14 +50,43 @@ public object Messaging {
         public val campaignStartDate: String? = null,
     )
 
+    /**
+     * Per-record fields inside [Record]. Shape varies by `type`.
+     *
+     * For `sms`/`mms`: [number] (the far-end TN), [direction], [rate] and
+     * [message] populated — plus [ip] on outbound sms and [subject] /
+     * [attachments] on mms (inbound: one object per media file; outbound: the
+     * submitted URL(s) as a string or array). For `dlr`: [sourceNumber],
+     * [destinationNumber], [messageText] (the receipt as received),
+     * [transactionGUID] (the id of the message it receipts), and
+     * [concatenatedMessage] on some multi-part receipts.
+     */
     @Serializable
     public data class RecordValue(
+        /** Your number that sent the original message (dlr). */
         public val sourceNumber: String? = null,
+        /** Recipient of the original message (dlr). */
         public val destinationNumber: String? = null,
+        /** in or out (sms, mms). */
         public val direction: String? = null,
+        /** Rate charged for the message (sms, mms). */
         public val rate: String? = null,
+        /** The other party: sender of an inbound message, recipient of an outbound one (sms, mms). */
         public val number: String? = null,
+        /** Message text (sms, mms). May be empty for an MMS that carried only media. */
         public val message: String? = null,
+        /** The delivery receipt as received, including its status (dlr). */
+        public val messageText: String? = null,
+        /** Id of the message this receipt is for (dlr). */
+        public val transactionGUID: String? = null,
+        /** Present on some receipts for multi-part messages (dlr). */
+        public val concatenatedMessage: String? = null,
+        /** mms only. Inbound: one object per media file; outbound: the submitted URL(s) as a string or array. */
+        public val attachments: JsonElement? = null,
+        /** Subject, if one was sent or received (mms). */
+        public val subject: String? = null,
+        /** Address the send request came from (outbound sms). */
+        public val ip: String? = null,
     )
 
     @Serializable

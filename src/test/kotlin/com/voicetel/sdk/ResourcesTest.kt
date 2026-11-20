@@ -211,7 +211,7 @@ class ResourcesTest {
                 req.method == HttpMethod.Post && req.url.encodedPath == "/v2.2/e911" ->
                     respond(envelope("""{"record":{"dn":"12015550123"}}"""), HttpStatusCode.OK, jsonHeaders)
                 req.method == HttpMethod.Post && req.url.encodedPath == "/v2.2/e911/validations" ->
-                    respond(envelope("""{"address":{"addressid":7,"city":"NYC"}}"""), HttpStatusCode.OK, jsonHeaders)
+                    respond(envelope("""{"address":{"addressid":"123a45b678c9d012e3f45a67b890c123","city":"NYC"}}"""), HttpStatusCode.OK, jsonHeaders)
                 req.method == HttpMethod.Get && req.url.encodedPath.startsWith("/v2.2/e911/") ->
                     respond(envelope("""{"record":{"dn":"12015550123"}}"""), HttpStatusCode.OK, jsonHeaders)
                 req.method == HttpMethod.Put && req.url.encodedPath.startsWith("/v2.2/e911/") ->
@@ -224,9 +224,9 @@ class ResourcesTest {
         client.e911.list()
         client.e911.create(E911.CreateRequest("2015550123", "Acme", "1 Main", null, "NYC", "NY", "10001"))
         val v = client.e911.validate(E911.AddressRequest("1 Main", null, "NYC", "NY", "10001"))
-        assertEquals(7, v.address.addressid)
+        assertEquals("123a45b678c9d012e3f45a67b890c123", v.address.addressid)
         client.e911.get("2015550123")
-        val p = client.e911.provision("2015550123", E911.ProvisionByIdRequest("Acme", 7))
+        val p = client.e911.provision("2015550123", E911.ProvisionByIdRequest("Acme", v.address.addressid!!))
         assertEquals("Acme", p.record.callername)
         client.e911.remove("2015550123")
         client.close()

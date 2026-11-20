@@ -2,7 +2,7 @@
 
 The official Kotlin client for the [VoiceTel REST API](https://voicetel.com/docs/api/v2.2/) — provision numbers, place orders, validate e911, send messages, and manage your account, with `suspend` functions, coroutine-safe retries, and `kotlinx.serialization` end-to-end.
 
-![Version](https://img.shields.io/badge/version-2.2.17-blue)
+![Version](https://img.shields.io/badge/version-2.2.20-blue)
 ![Kotlin](https://img.shields.io/badge/kotlin-2.0%2B-purple)
 ![JVM](https://img.shields.io/badge/jvm-17%2B-blue)
 ![License](https://img.shields.io/badge/license-MIT-green)
@@ -28,7 +28,7 @@ The official Kotlin client for the [VoiceTel REST API](https://voicetel.com/docs
 ## ✨ Features
 
 ### 🛡️ Idiomatic, Strongly Typed Kotlin
-- Every one of the 79 API operations is a `suspend fun` returning a `@Serializable` `data class`.
+- Every one of the 83 API operations is a `suspend fun` returning a `@Serializable` `data class`.
 - `kotlinx.serialization.json` codec end-to-end — no Jackson, no reflection at runtime.
 - Sealed `ErrorKind`/`ApiError` so you can pattern-match failures without parsing HTTP codes.
 
@@ -44,12 +44,12 @@ The official Kotlin client for the [VoiceTel REST API](https://voicetel.com/docs
 - Streamlined `ApiError` carries the typed `kind`, original HTTP `statusCode`, server `code`, and structured `body` for 409 conflicts.
 
 ### 📞 Complete API Coverage
-- **Numbers** — list, get, add, remove, route, translate, CNAM, LIDB, fax, forward, SMS, messaging campaigns, port-out PIN, account moves.
+- **Numbers** — list, get, add, remove, route, translate, CNAM, LIDB, directory listing (411), fax, forward, SMS, messaging campaigns, port-out PIN, account moves.
 - **Account** — profile, sub-accounts, CDRs, credits, payments, MRC, registration, password recovery.
 - **e911** — record provisioning, address validation, lookup, removal.
 - **Gateways** — list, create, update, delete, view bound numbers.
 - **Messaging** — SMS & MMS sending, message history, 10DLC brand and campaign registration, per-number messaging state, and messaging health (account overview, per-number live check, spam-blocked samples, alert-email setting).
-- **Lookups** — CNAM and LRN dips.
+- **Lookups** — CNAM, carrier & line type, and LRN dips.
 - **iNumbering** — inventory search, coverage queries, number orders, port-in submissions, port-out availability checks.
 - **Support** — ticket create / read / update / delete, threaded messages, replies.
 - **ACL** — IP allowlist management with structured 409 conflict bodies.
@@ -66,7 +66,7 @@ The official Kotlin client for the [VoiceTel REST API](https://voicetel.com/docs
 
 ```kotlin
 dependencies {
-    implementation("com.voicetel:voicetel-sdk-kotlin:2.2.17")
+    implementation("com.voicetel:voicetel-sdk-kotlin:2.2.20")
 }
 ```
 
@@ -76,7 +76,7 @@ dependencies {
 <dependency>
   <groupId>com.voicetel</groupId>
   <artifactId>voicetel-sdk-kotlin</artifactId>
-  <version>2.2.17</version>
+  <version>2.2.20</version>
 </dependency>
 ```
 
@@ -152,7 +152,7 @@ val key: String = client.login("1000000001", "hunter2")
 | e911 | `client.e911` | `client.e911.validate(E911.AddressRequest(...))` |
 | Gateways | `client.gateways` | `client.gateways.list()` |
 | iNumbering | `client.iNumbering` | `client.iNumbering.searchInventory(InventoryQuery(tnMask = "201555*"))` |
-| Lookups | `client.lookups` | `client.lookups.lrn("2015550123", "2015550100")` |
+| Lookups | `client.lookups` | `client.lookups.carrier("2015550123")` |
 | Messaging | `client.messaging` | `client.messaging.send(Messaging.SendRequest(from, to, text))` |
 | Numbers | `client.numbers` | `client.numbers.assignCampaign("2015550123", Numbers.CampaignAssignRequest("C1"))` |
 | Support | `client.support` | `client.support.create(Support.CreateRequest("subject", "body"))` |
