@@ -13,6 +13,7 @@ Audit release: the new Fax API, plus a breaking wire fix for ACL removal.
   - `document(id)` — the rendered PDF of a fax as raw bytes (`GET /v2.2/faxes/{id}/document`, binary response; the transport gained a raw-bytes download path).
   - The fax error envelope adds `serverTime` beside status/error; it is ignored by error decoding (unknown fields are tolerated everywhere).
 - `Transport.requestMultipart` / `Transport.requestBytes` — the two new transport paths (multipart upload with a pinned Idempotency-Key, and binary download) backing the fax resource.
+- Typed error kinds for HTTP 402 (`PaymentRequired` — positive balance required: fax send, directory listing) and HTTP 413 (`RequestTooLarge` — upload over 8 MiB), both previously mapped to `Unknown`.
 
 ### Changed (breaking wire fix)
 - `DELETE /v2.2/acl` now sends the same `{"acl":[{"cidr":"..."}]}` JSON **body** as `POST /v2.2/acl` and **no `cidrs` query parameter** — the live v2.2.0 handler never read the query param. `acl.remove(List<String>)` keeps its signature; an overload taking `Acl.ModifyRequest` mirrors `add`. The 409 partial-failure payload (`data.removed` / `data.failed`) stays available on `ApiError.body`, as before.
