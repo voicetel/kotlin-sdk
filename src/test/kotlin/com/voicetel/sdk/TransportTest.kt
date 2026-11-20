@@ -189,9 +189,11 @@ class TransportTest {
     fun errorKindFromStatus() {
         assertEquals(ErrorKind.BadRequest, ErrorKind.fromStatus(400))
         assertEquals(ErrorKind.Authentication, ErrorKind.fromStatus(401))
+        assertEquals(ErrorKind.PaymentRequired, ErrorKind.fromStatus(402))
         assertEquals(ErrorKind.PermissionDenied, ErrorKind.fromStatus(403))
         assertEquals(ErrorKind.NotFound, ErrorKind.fromStatus(404))
         assertEquals(ErrorKind.Conflict, ErrorKind.fromStatus(409))
+        assertEquals(ErrorKind.RequestTooLarge, ErrorKind.fromStatus(413))
         assertEquals(ErrorKind.RateLimit, ErrorKind.fromStatus(429))
         assertEquals(ErrorKind.Server, ErrorKind.fromStatus(503))
         assertEquals(ErrorKind.Unknown, ErrorKind.fromStatus(418))

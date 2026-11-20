@@ -167,9 +167,11 @@ All HTTP errors throw `ApiError` (a `RuntimeException`) with a typed `ErrorKind`
 |---|---|
 | `BadRequest` | 400 |
 | `Authentication` | 401 |
+| `PaymentRequired` | 402 |
 | `PermissionDenied` | 403 |
 | `NotFound` | 404 |
 | `Conflict` | 409 |
+| `RequestTooLarge` | 413 |
 | `RateLimit` | 429 |
 | `Server` | 5xx |
 | `Unknown` | other / transport |

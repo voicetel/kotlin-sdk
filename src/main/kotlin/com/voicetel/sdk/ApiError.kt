@@ -16,6 +16,9 @@ public enum class ErrorKind {
     /** HTTP 401 — bearer token is missing, expired, or invalid. */
     Authentication,
 
+    /** HTTP 402 — the account balance must be positive for this action (fax send, directory listing). */
+    PaymentRequired,
+
     /** HTTP 403 — authenticated but not allowed. */
     PermissionDenied,
 
@@ -24,6 +27,9 @@ public enum class ErrorKind {
 
     /** HTTP 409 — request conflicts with current state. */
     Conflict,
+
+    /** HTTP 413 — the upload is too large (fax documents must total 8 MiB or smaller). */
+    RequestTooLarge,
 
     /** HTTP 429 — exceeded the 6/hr/IP cap on account endpoints. */
     RateLimit,
@@ -36,9 +42,11 @@ public enum class ErrorKind {
         public fun fromStatus(status: Int): ErrorKind = when (status) {
             400 -> BadRequest
             401 -> Authentication
+            402 -> PaymentRequired
             403 -> PermissionDenied
             404 -> NotFound
             409 -> Conflict
+            413 -> RequestTooLarge
             429 -> RateLimit
             in 500..599 -> Server
             else -> Unknown

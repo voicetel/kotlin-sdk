@@ -34,6 +34,7 @@ import kotlin.test.assertTrue
  * - GET /v2.2/faxes/{id} (full job shape)
  * - GET /v2.2/faxes/{id}/document (binary download)
  * - the fax error envelope's extra `serverTime` field is tolerated
+ * - POST /v2.2/faxes 402/413 map to PaymentRequired/RequestTooLarge error kinds
  * - DELETE /v2.2/acl sends the {"acl":[{cidr}]} body with no cidrs query
  */
 class V2221Test {
@@ -289,6 +290,41 @@ class V2221Test {
         assertTrue(err.isNotFound)
         assertEquals("Not found", err.message)
         client.close()
+    }
+
+    @Test
+    fun faxSendMaps402And413ToTypedErrorKinds() = runTest {
+        // v2.2.21: 402 — the balance must be positive to send a fax;
+        // 413 — the documents must total 8 MiB or smaller.
+        val pdf = byteArrayOf('x'.code.toByte())
+
+        val poor = mockClient { _ ->
+            respond("""{"status":"error","error":{"code":402,""" +
+                """"message":"Your account needs a positive balance to send faxes."},""" +
+                """"serverTime":1795100000}""", HttpStatusCode.PaymentRequired, jsonHeaders)
+        }
+        val e402 = assertFailsWith<ApiError> {
+            poor.fax.send("2015550123", "2125550123",
+                listOf(Fax.Document("contract.pdf", "application/pdf", pdf)))
+        }
+        assertEquals(ErrorKind.PaymentRequired, e402.kind)
+        assertEquals(402, e402.statusCode)
+        assertEquals(402L, e402.code)
+        poor.close()
+
+        val huge = mockClient { _ ->
+            respond("""{"status":"error","error":{"code":413,""" +
+                """"message":"The documents must total 8 MiB or smaller"},""" +
+                """"serverTime":1795100000}""", HttpStatusCode.PayloadTooLarge, jsonHeaders)
+        }
+        val e413 = assertFailsWith<ApiError> {
+            huge.fax.send("2015550123", "2125550123",
+                listOf(Fax.Document("contract.pdf", "application/pdf", pdf)))
+        }
+        assertEquals(ErrorKind.RequestTooLarge, e413.kind)
+        assertEquals(413, e413.statusCode)
+        assertEquals(413L, e413.code)
+        huge.close()
     }
 
     // ------------------------------------------------------- acl delete ---
