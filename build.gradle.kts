@@ -46,18 +46,6 @@ kotlin {
     }
 }
 
-java {
-    withSourcesJar()
-    withJavadocJar()
-}
-
-// Gradle 9 validates that the publication metadata task declares a dependency
-// on the javadoc jar it consumes; without this, publishing fails with an
-// "implicit dependency" error.
-tasks.matching { it.name == "generateMetadataFileForMavenPublication" }.configureEach {
-    dependsOn("plainJavadocJar")
-}
-
 tasks.test {
     useJUnitPlatform()
     finalizedBy(tasks.jacocoTestReport)
