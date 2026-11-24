@@ -11,13 +11,13 @@ public object Numbers {
     @Serializable
     public data class AddRequest(
         public val number: String,
-        /** Global route type: 1 USER, 2 T30, 3 VOICE_BRIDGE, 4 DID (default), 5 T38, 6 VOICEML, 8 SDN, 9 MOBILE. */
+        /** A gateway id on this account (GET /v2.2/gateways) or a global route: 1 USER, 2 T30, 3 VOICE_BRIDGE, 4 DID (default), 5 T38, 6 VOICEML, 8 SDN, 9 MOBILE. An unknown route is rejected with 400. */
         public val route: Int? = null,
     )
 
     @Serializable
     public data class RouteRequest(
-        /** Global route type: 1 USER, 2 T30, 3 VOICE_BRIDGE, 4 DID (default), 5 T38, 6 VOICEML, 8 SDN, 9 MOBILE. */
+        /** A gateway id on this account (GET /v2.2/gateways) or a global route: 1 USER, 2 T30, 3 VOICE_BRIDGE, 4 DID (default), 5 T38, 6 VOICEML, 8 SDN, 9 MOBILE. An unknown route is rejected with 400. */
         public val route: Int,
     )
 
@@ -61,12 +61,106 @@ public object Numbers {
     @Serializable
     public data class MoveRequest(
         public val accountId: Int,
-        /** Global route type: 1 USER, 2 T30, 3 VOICE_BRIDGE, 4 DID (default), 5 T38, 6 VOICEML, 8 SDN, 9 MOBILE. */
+        /** A gateway id on this account (GET /v2.2/gateways) or a global route: 1 USER, 2 T30, 3 VOICE_BRIDGE, 4 DID (default), 5 T38, 6 VOICEML, 8 SDN, 9 MOBILE. */
         public val route: Int? = null,
     )
 
     @Serializable
     public data class PortOutPinUpdateRequest(public val pin: String)
+
+    // ------------------------------------------------- directory listing (411) ---
+
+    /**
+     * A 411 directory listing as published (or, on PUT, as submitted).
+     * [type] "B" carries the business name in [name]; "R" carries
+     * [firstName] / [lastName]. All address fields may be empty strings.
+     * [complex] marks a multi-line listing, which is read-only through the
+     * API.
+     */
+    @Serializable
+    public data class DirectoryListing(
+        /** B (business) or R (residence). */
+        public val type: String? = null,
+        /** Business name (type B). */
+        public val name: String? = null,
+        /** Resident's first name (type R). */
+        public val firstName: String? = null,
+        /** Resident's last name (type R). */
+        public val lastName: String? = null,
+        public val streetNumber: String? = null,
+        public val streetName: String? = null,
+        /** A word such as St, Ave or Rd. */
+        public val streetType: String? = null,
+        /** Street direction: "", N, S, E, W, NE, NW, SE or SW. */
+        public val streetSuffix: String? = null,
+        /** Suite or unit. */
+        public val location: String? = null,
+        public val city: String? = null,
+        /** Two-letter US state or territory code. */
+        public val state: String? = null,
+        /** 5-digit ZIP. */
+        public val zip: String? = null,
+        /** True for a multi-line listing; read-only through the API. */
+        public val complex: Boolean? = null,
+    )
+
+    /**
+     * PUT /v2.2/numbers/{number}/directory-listing — add or replace the
+     * listing. [type] is `business` or `residence` (the shorthand `B` and
+     * `R` is also accepted by the server). A business sets [name]; a
+     * residence sets [firstName] and [lastName]. The street is optional —
+     * give [streetNumber] and [streetName] together, or neither;
+     * [streetSuffix] and [location] require a street name. [city], [state]
+     * (two-letter US state or territory code) and [zip] (5 digits; a ZIP+4 is
+     * accepted and stored as the 5-digit ZIP) are required.
+     */
+    @Serializable
+    public data class DirectoryListingRequest(
+        /** business or residence; the shorthand B and R is also accepted. */
+        public val type: String,
+        /** Business name; required for business (<=60). */
+        public val name: String? = null,
+        /** Resident's first name; required for residence (<=30). */
+        public val firstName: String? = null,
+        /** Resident's last name; required for residence (<=30). */
+        public val lastName: String? = null,
+        /** Up to 10 letters or digits; give it together with [streetName], or neither. */
+        public val streetNumber: String? = null,
+        /** Street name; give it together with [streetNumber], or neither. */
+        public val streetName: String? = null,
+        /** A word such as St, Ave or Rd. */
+        public val streetType: String? = null,
+        /** Street direction; requires a street name. */
+        public val streetSuffix: String? = null,
+        /** Suite or unit; requires a street name. */
+        public val location: String? = null,
+        public val city: String,
+        public val state: String,
+        public val zip: String,
+    )
+
+    /**
+     * Data payload from GET/PUT/DELETE /v2.2/numbers/{number}/directory-listing.
+     * PUT and DELETE are accepted (202) and applied in the background:
+     * [status] is `pending` / `removing` (or `not_listed` when a pending add
+     * was cancelled) and [orderId] carries the carrier order reference. GET
+     * reports the state as published, with [eligible] telling whether a
+     * listing can be added.
+     */
+    @Serializable
+    public data class DirectoryListingData(
+        public val number: String? = null,
+        /** listed: published. not_listed: none. pending: an add or change is being applied. removing: a removal is being applied. unavailable: the number cannot be listed. */
+        public val status: String? = null,
+        /** Whether a listing can be added to this number (GET). */
+        public val eligible: Boolean? = null,
+        /** The published listing, or null. */
+        public val listing: DirectoryListing? = null,
+        /** A submitted listing not yet published, or null. */
+        public val pending: DirectoryListing? = null,
+        /** Reference of the submitted change (PUT and DELETE), or null. */
+        public val orderId: String? = null,
+    )
 
     // ------------------------------------------------ entities & responses ---
 
@@ -74,7 +168,7 @@ public object Numbers {
     public data class Detail(
         public val number: String? = null,
         public val translated: String? = null,
-        /** Global route type: 1 USER, 2 T30, 3 VOICE_BRIDGE, 4 DID (default), 5 T38, 6 VOICEML, 8 SDN, 9 MOBILE. */
+        /** A gateway id on this account (GET /v2.2/gateways) or a global route: 1 USER, 2 T30, 3 VOICE_BRIDGE, 4 DID (default), 5 T38, 6 VOICEML, 8 SDN, 9 MOBILE. */
         public val route: Int? = null,
         public val gateway: String? = null,
         public val cnam: Boolean? = null,
@@ -126,7 +220,7 @@ public object Numbers {
     @Serializable
     public data class AddData(
         public val number: String? = null,
-        /** Global route type: 1 USER, 2 T30, 3 VOICE_BRIDGE, 4 DID (default), 5 T38, 6 VOICEML, 8 SDN, 9 MOBILE. */
+        /** A gateway id on this account (GET /v2.2/gateways) or a global route: 1 USER, 2 T30, 3 VOICE_BRIDGE, 4 DID (default), 5 T38, 6 VOICEML, 8 SDN, 9 MOBILE. */
         public val route: Int? = null,
     )
 
@@ -166,14 +260,14 @@ public object Numbers {
     public data class MoveData(
         public val number: String? = null,
         public val accountId: Int? = null,
-        /** Global route type on the destination account after the move: 1 USER, 2 T30, 3 VOICE_BRIDGE, 4 DID (default), 5 T38, 6 VOICEML, 8 SDN, 9 MOBILE. */
+        /** A gateway id on this account (GET /v2.2/gateways) or a global route on the destination account after the move: 1 USER, 2 T30, 3 VOICE_BRIDGE, 4 DID (default), 5 T38, 6 VOICEML, 8 SDN, 9 MOBILE. */
         public val route: Int? = null,
     )
 
     @Serializable
     public data class RouteData(
         public val number: String? = null,
-        /** Global route type: 1 USER, 2 T30, 3 VOICE_BRIDGE, 4 DID (default), 5 T38, 6 VOICEML, 8 SDN, 9 MOBILE. */
+        /** A gateway id on this account (GET /v2.2/gateways) or a global route: 1 USER, 2 T30, 3 VOICE_BRIDGE, 4 DID (default), 5 T38, 6 VOICEML, 8 SDN, 9 MOBILE. */
         public val route: Int? = null,
     )
 

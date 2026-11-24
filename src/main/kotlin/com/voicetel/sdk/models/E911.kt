@@ -33,7 +33,8 @@ public object E911 {
     @Serializable
     public data class ProvisionByIdRequest(
         public val callername: String,
-        public val addressid: Int,
+        /** Upstream address id from POST /v2.2/e911/validations — a hex string, not an integer. */
+        public val addressid: String,
     )
 
     @Serializable
@@ -49,7 +50,8 @@ public object E911 {
 
     @Serializable
     public data class ValidatedAddress(
-        public val addressid: Int? = null,
+        /** Upstream address id (hex string) — pass it to [ProvisionByIdRequest] to provision the address. */
+        public val addressid: String? = null,
         public val address1: String? = null,
         public val address2: String? = null,
         public val city: String? = null,

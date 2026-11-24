@@ -10,8 +10,8 @@ plugins {
 }
 
 group = "com.voicetel"
-version = "2.2.17"
-description = "Official Kotlin SDK for the VoiceTel REST API (v2.2.17)."
+version = "2.2.21"
+description = "Official Kotlin SDK for the VoiceTel REST API (v2.2.21)."
 
 repositories {
     mavenCentral()
@@ -44,11 +44,6 @@ kotlin {
         jvmTarget.set(JvmTarget.JVM_17)
         freeCompilerArgs.add("-Xjsr305=strict")
     }
-}
-
-java {
-    withSourcesJar()
-    withJavadocJar()
 }
 
 tasks.test {

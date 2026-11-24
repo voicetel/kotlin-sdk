@@ -57,6 +57,30 @@ public class NumbersService internal constructor(private val t: Transport) {
             @Suppress("UNCHECKED_CAST") (Numbers.LidbRequest.serializer() as KSerializer<Any>), body,
             Numbers.LidbData.serializer(), true)
 
+    /** GET /v2.2/numbers/{number}/directory-listing — 411 listing state as published. */
+    public suspend fun getDirectoryListing(number: String): Numbers.DirectoryListingData =
+        t.request(HttpMethod.Get, "/v2.2/numbers/${number.encodeURLPathPart()}/directory-listing", null, null, null,
+            Numbers.DirectoryListingData.serializer(), true)
+
+    /**
+     * Adds or replaces the 411 directory listing. 202 Accepted — applied in
+     * the background ([Numbers.DirectoryListingData.status] is "pending");
+     * poll [getDirectoryListing] until it reports "listed".
+     */
+    public suspend fun setDirectoryListing(number: String, body: Numbers.DirectoryListingRequest): Numbers.DirectoryListingData =
+        t.request(HttpMethod.Put, "/v2.2/numbers/${number.encodeURLPathPart()}/directory-listing", null,
+            @Suppress("UNCHECKED_CAST") (Numbers.DirectoryListingRequest.serializer() as KSerializer<Any>), body,
+            Numbers.DirectoryListingData.serializer(), true)
+
+    /**
+     * Removes the published listing, or cancels an add not yet applied. 202
+     * Accepted — applied in the background ([Numbers.DirectoryListingData.status]
+     * is "removing", or "not_listed" for a cancelled add, with no orderId).
+     */
+    public suspend fun removeDirectoryListing(number: String): Numbers.DirectoryListingData =
+        t.request(HttpMethod.Delete, "/v2.2/numbers/${number.encodeURLPathPart()}/directory-listing", null, null, null,
+            Numbers.DirectoryListingData.serializer(), true)
+
     public suspend fun getFax(number: String): Numbers.FaxData =
         t.request(HttpMethod.Get, "/v2.2/numbers/${number.encodeURLPathPart()}/fax", null, null, null,
             Numbers.FaxData.serializer(), true)

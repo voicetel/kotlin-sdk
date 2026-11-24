@@ -14,6 +14,7 @@ import com.voicetel.sdk.resources.INumberingService
 import com.voicetel.sdk.resources.MessagingService
 import io.ktor.client.engine.mock.respond
 import io.ktor.client.utils.EmptyContent
+import io.ktor.http.content.TextContent
 import io.ktor.http.HttpMethod
 import io.ktor.http.HttpStatusCode
 import kotlinx.coroutines.test.runTest
@@ -164,9 +165,12 @@ class ResourcesTest {
                 HttpMethod.Post -> respond(envelope("""{"added":[{"cidr":"1.0.0.0/24"}]}"""),
                     HttpStatusCode.OK, jsonHeaders)
                 HttpMethod.Delete -> {
-                    // DELETE /v2.2/acl takes cidrs as a query param, no body.
-                    assertEquals("1.0.0.0/24,2.0.0.0/24", req.url.parameters["cidrs"])
-                    assertTrue(req.body is EmptyContent)
+                    // v2.2.21: DELETE /v2.2/acl takes the same {"acl":[{cidr}]}
+                    // body as POST; the old cidrs query parameter is not read.
+                    assertTrue(req.url.parameters.names().isEmpty(),
+                        "query must be empty, was: ${req.url.parameters}")
+                    val sent = (req.body as TextContent).text
+                    assertEquals("""{"acl":[{"cidr":"1.0.0.0/24"},{"cidr":"2.0.0.0/24"}]}""", sent)
                     respond(envelope("""{"removed":[{"cidr":"1.0.0.0/24"}]}"""),
                         HttpStatusCode.OK, jsonHeaders)
                 }
@@ -211,7 +215,7 @@ class ResourcesTest {
                 req.method == HttpMethod.Post && req.url.encodedPath == "/v2.2/e911" ->
                     respond(envelope("""{"record":{"dn":"12015550123"}}"""), HttpStatusCode.OK, jsonHeaders)
                 req.method == HttpMethod.Post && req.url.encodedPath == "/v2.2/e911/validations" ->
-                    respond(envelope("""{"address":{"addressid":7,"city":"NYC"}}"""), HttpStatusCode.OK, jsonHeaders)
+                    respond(envelope("""{"address":{"addressid":"123a45b678c9d012e3f45a67b890c123","city":"NYC"}}"""), HttpStatusCode.OK, jsonHeaders)
                 req.method == HttpMethod.Get && req.url.encodedPath.startsWith("/v2.2/e911/") ->
                     respond(envelope("""{"record":{"dn":"12015550123"}}"""), HttpStatusCode.OK, jsonHeaders)
                 req.method == HttpMethod.Put && req.url.encodedPath.startsWith("/v2.2/e911/") ->
@@ -224,9 +228,9 @@ class ResourcesTest {
         client.e911.list()
         client.e911.create(E911.CreateRequest("2015550123", "Acme", "1 Main", null, "NYC", "NY", "10001"))
         val v = client.e911.validate(E911.AddressRequest("1 Main", null, "NYC", "NY", "10001"))
-        assertEquals(7, v.address.addressid)
+        assertEquals("123a45b678c9d012e3f45a67b890c123", v.address.addressid)
         client.e911.get("2015550123")
-        val p = client.e911.provision("2015550123", E911.ProvisionByIdRequest("Acme", 7))
+        val p = client.e911.provision("2015550123", E911.ProvisionByIdRequest("Acme", v.address.addressid!!))
         assertEquals("Acme", p.record.callername)
         client.e911.remove("2015550123")
         client.close()

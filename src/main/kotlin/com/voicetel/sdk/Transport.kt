@@ -5,16 +5,19 @@ import io.ktor.client.engine.cio.CIO
 import io.ktor.client.plugins.HttpTimeout
 import io.ktor.client.plugins.compression.ContentEncoding
 import io.ktor.client.plugins.contentnegotiation.ContentNegotiation
+import io.ktor.client.request.forms.MultiPartFormDataContent
 import io.ktor.client.request.header
 import io.ktor.client.request.request
 import io.ktor.client.request.setBody
 import io.ktor.client.statement.HttpResponse
+import io.ktor.client.statement.bodyAsBytes
 import io.ktor.client.statement.bodyAsText
+import io.ktor.http.ContentType
 import io.ktor.http.HttpHeaders
 import io.ktor.http.HttpMethod
+import io.ktor.http.content.OutgoingContent
 import io.ktor.http.contentType
 import io.ktor.http.takeFrom
-import io.ktor.http.ContentType
 import io.ktor.serialization.kotlinx.json.json
 import kotlinx.coroutines.delay
 import kotlinx.serialization.DeserializationStrategy
@@ -127,6 +130,45 @@ public class Transport internal constructor(opts: ClientOptions) {
         }
     }
 
+    /**
+     * POST a `multipart/form-data` body (file uploads — fax send). The
+     * response is decoded like any other JSON envelope. [idempotencyKey] can
+     * pin the Idempotency-Key header (e.g. resubmitting a fax must reuse the
+     * original key); null generates a fresh UUID per call, reused across
+     * retries.
+     */
+    public suspend fun <T> requestMultipart(
+        path: String,
+        form: MultiPartFormDataContent,
+        responseSerializer: DeserializationStrategy<T>,
+        requireAuth: Boolean = true,
+        idempotencyKey: String? = null,
+    ): T {
+        // Fax send requires a client-generated UUID key; default a null
+        // override to a fresh UUID, computed once so retries reuse it.
+        val key = idempotencyKey ?: java.util.UUID.randomUUID().toString()
+        val resp = sendWithRetry(
+            HttpMethod.Post, path, null, null, null, requireAuth,
+            content = form, idempotencyKeyOverride = key,
+        )
+        return decodeBody(resp, responseSerializer)
+    }
+
+    /**
+     * Request returning the raw response bytes (binary downloads — the fax
+     * document PDF). Non-2xx responses raise the usual typed [ApiError]
+     * with the parsed error envelope.
+     */
+    public suspend fun requestBytes(
+        method: HttpMethod,
+        path: String,
+        requireAuth: Boolean = true,
+    ): ByteArray {
+        val resp = sendWithRetry(method, path, null, null, null, requireAuth,
+            accept = "application/pdf, application/json")
+        return resp.bodyAsBytes()
+    }
+
     private suspend fun sendWithRetry(
         method: HttpMethod,
         path: String,
@@ -134,6 +176,9 @@ public class Transport internal constructor(opts: ClientOptions) {
         bodySerializer: SerializationStrategy<Any>?,
         bodyValue: Any?,
         requireAuth: Boolean,
+        content: OutgoingContent? = null,
+        idempotencyKeyOverride: String? = null,
+        accept: String = ContentType.Application.Json.toString(),
     ): HttpResponse {
         if (requireAuth && apiKey.isEmpty()) {
             throw ApiError(
@@ -147,8 +192,9 @@ public class Transport internal constructor(opts: ClientOptions) {
             json.encodeToString(bodySerializer as SerializationStrategy<Any?>, bodyValue)
         } else null
 
-        val idempotencyKey = if (method in setOf(HttpMethod.Post, HttpMethod.Put, HttpMethod.Patch))
-            java.util.UUID.randomUUID().toString() else null
+        val idempotencyKey = idempotencyKeyOverride
+            ?: if (method in setOf(HttpMethod.Post, HttpMethod.Put, HttpMethod.Patch))
+                java.util.UUID.randomUUID().toString() else null
 
         var lastError: Throwable? = null
         var attempt = 0
@@ -161,10 +207,14 @@ public class Transport internal constructor(opts: ClientOptions) {
                         query?.forEach { (k, v) -> if (v != null) parameters.append(k, v.toString()) }
                     }
                     header(HttpHeaders.UserAgent, userAgent)
-                    header(HttpHeaders.Accept, ContentType.Application.Json.toString())
+                    header(HttpHeaders.Accept, accept)
                     if (requireAuth) header(HttpHeaders.Authorization, "Bearer $apiKey")
                     if (idempotencyKey != null) header("Idempotency-Key", idempotencyKey)
-                    if (serializedBody != null) {
+                    if (content != null) {
+                        // MultiPartFormDataContent carries its own Content-Type
+                        // (including the generated boundary).
+                        setBody(content)
+                    } else if (serializedBody != null) {
                         contentType(ContentType.Application.Json)
                         setBody(serializedBody)
                     }
